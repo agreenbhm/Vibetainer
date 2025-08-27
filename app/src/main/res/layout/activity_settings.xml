@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar_settings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/purple_500"
+            android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
+            android:title="Settings" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layout_poll_ms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Poll interval (ms)"
+            app:helperText="Range: 1000 - 60000">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_poll_ms"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layout_history"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:hint="History length (points)"
+            app:helperText="Range: 20 - 600">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_history"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_header_total"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Show header total when per-node counts unavailable" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_proxy_enabled"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Use HTTP proxy" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layout_proxy_host"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Proxy host">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_proxy_host"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/layout_proxy_port"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Proxy port">
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/input_proxy_port"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="number" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_ignore_ssl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Ignore SSL errors (trust all)" />
+
+        <Button
+            android:id="@+id/button_save_settings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Save" />
+
+    </LinearLayout>
+
+</ScrollView>

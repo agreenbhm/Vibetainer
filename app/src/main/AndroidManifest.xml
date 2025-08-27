@@ -1,15 +1,54 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.portainerapp">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
+        android:name=".PortainerApp"
         android:allowBackup="true"
+        android:usesCleartextTraffic="true"
         android:label="PortainerApp"
-        android:supportsRtl="true">
-        <activity android:name=".MainActivity">
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Portainer">
+        <activity
+            android:name=".ui.NodeDetailActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.EndpointListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.ContainerDetailActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.DashboardActivity"
+            android:exported="false" />
+
+        <activity android:name=".ui.LoginActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+            <activity
+            android:name=".ui.ContainersListActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.ServicesListActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.StacksListActivity"
+            android:exported="false" />
     </application>
 </manifest>
