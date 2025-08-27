@@ -1,1 +1,1 @@
-# Portainer-App
+An Android app for managing portainer.
