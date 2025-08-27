@@ -39,6 +39,7 @@ class ContainerVH(itemView: View, private val onClick: (ContainerSummary) -> Uni
             else -> android.graphics.Color.GRAY
         }
         stateChip.chipBackgroundColor = android.content.res.ColorStateList.valueOf(color)
+        stateChip.setTextColor(android.graphics.Color.BLACK)
         itemView.setOnClickListener { onClick(item) }
     }
 }

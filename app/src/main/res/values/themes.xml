@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.Portainer" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorSecondary">@color/teal_700</item>
-        <item name="colorTertiary">@color/pink_500</item>
+        <!-- Use Material You dynamic color via DynamicColors.applyToActivitiesIfAvailable -->
         <item name="android:fontFamily">sans-serif-medium</item>
-        <item name="android:navigationBarColor" tools:targetApi="l">@color/purple_500</item>
-        <item name="android:statusBarColor" tools:targetApi="l">@color/purple_500</item>
+        <!-- Edge-to-edge: transparent system bars (content draws behind) -->
+        <item name="android:navigationBarColor" tools:targetApi="l">@android:color/transparent</item>
+        <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
+        <!-- MaterialToolbar instances use explicit style in layouts -->
+    </style>
+
+    <style name="Widget.Portainer.MaterialToolbar" parent="Widget.Material3.Toolbar">
+        <item name="backgroundTint">?attr/colorSurface</item>
+        <item name="titleTextColor">?attr/colorOnSurface</item>
+        <item name="subtitleTextColor">?attr/colorOnSurfaceVariant</item>
+        <item name="navigationIconTint">?attr/colorOnSurface</item>
+        <item name="android:elevation">4dp</item>
     </style>
 </resources>

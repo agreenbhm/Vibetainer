@@ -17,6 +17,9 @@ class SettingsActivity : AppCompatActivity() {
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_settings)
         setSupportActionBar(toolbar)
         supportActionBar?.title = "Settings"
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        toolbar.setNavigationOnClickListener { finish() }
+        com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.content_settings))
 
         val prefs = Prefs(this)
         val poll = findViewById<TextInputEditText>(R.id.input_poll_ms)

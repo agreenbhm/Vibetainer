@@ -10,17 +10,16 @@ import com.example.portainerapp.R
 import com.example.portainerapp.network.PortainerApi
 import com.example.portainerapp.network.SystemDf
 import com.example.portainerapp.util.Prefs
-import com.github.mikephil.charting.charts.BarChart
+import com.google.android.material.appbar.MaterialToolbar
+import com.example.portainerapp.ui.chart.ValueMarker
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener
+import com.github.mikephil.charting.highlight.Highlight
 import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.data.BarData
-import com.github.mikephil.charting.data.BarDataSet
-import com.github.mikephil.charting.data.BarEntry
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
-import com.google.android.material.appbar.MaterialToolbar
-import com.example.portainerapp.ui.chart.ValueMarker
 import com.google.android.material.chip.Chip
+import com.google.android.material.color.MaterialColors
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.portainerapp.ui.adapters.ContainerAdapter
@@ -30,55 +29,68 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 
 class NodeDetailActivity : AppCompatActivity() {
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_settings -> { startActivity(android.content.Intent(this, SettingsActivity::class.java)); true }
+            R.id.action_switch_endpoint -> { startActivity(android.content.Intent(this, EndpointListActivity::class.java)); true }
+            R.id.action_logout -> {
+                com.example.portainerapp.util.Prefs(this).clearAll()
+                val i = android.content.Intent(this, LoginActivity::class.java)
+                i.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(i)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_node_detail)
 
-        val nodeId = intent.getStringExtra(EXTRA_NODE_ID) ?: return finish()
-        val endpointId = intent.getIntExtra(EXTRA_ENDPOINT_ID, 1)
+        val nodeId = intent.getStringExtra("node_id") ?: return finish()
+        val endpointId = intent.getIntExtra("endpoint_id", 1)
 
-        val title = findViewById<TextView>(R.id.text_node_title)
-        val details = findViewById<TextView>(R.id.text_node_details)
-        val chart = findViewById<BarChart>(R.id.chart_placeholder)
-        val storageChart = findViewById<com.github.mikephil.charting.charts.PieChart>(R.id.chart_storage)
-        val liveChart = findViewById<LineChart>(R.id.chart_live)
+        // Title/details removed from layout for cleaner header
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_detail)
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { finish() }
+        com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.swipe_node_detail))
         val chipCpu = findViewById<Chip>(R.id.chip_cpu)
         val chipMem = findViewById<Chip>(R.id.chip_mem)
-        val chipTotal = findViewById<Chip>(R.id.chip_total)
         val chipRunning = findViewById<Chip>(R.id.chip_running)
         val chipStopped = findViewById<Chip>(R.id.chip_stopped)
-        val containersRv = findViewById<RecyclerView>(R.id.recycler_containers)
-        containersRv.layoutManager = LinearLayoutManager(this)
+        val textCpu = findViewById<TextView>(R.id.text_cpu_value)
+        val textMem = findViewById<TextView>(R.id.text_mem_value)
+        val cardContainers = findViewById<android.view.View>(R.id.card_containers_node)
+        val cardImages = findViewById<android.view.View>(R.id.card_images_node)
+        val cardVolumes = findViewById<android.view.View>(R.id.card_volumes_node)
+        val textContainersCountCard = findViewById<TextView>(R.id.text_containers_count_card)
+        val textImagesCount = findViewById<TextView>(R.id.text_images_count)
+        val textVolumesCount = findViewById<TextView>(R.id.text_volumes_count)
+        // bottom containers list removed
+        val swipe = findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe_node_detail)
         var agentTargetValue: String? = null
-        val containerAdapter = ContainerAdapter { container ->
-            val intent = android.content.Intent(this, ContainerDetailActivity::class.java)
-            intent.putExtra(ContainerDetailActivity.EXTRA_ENDPOINT_ID, endpointId)
-            intent.putExtra(ContainerDetailActivity.EXTRA_CONTAINER_ID, container.Id)
-            // Use the node's simple hostname for agent target, if available
-            intent.putExtra(
-                ContainerDetailActivity.EXTRA_AGENT_TARGET,
-                agentTargetValue ?: title.text?.toString()
-            )
-            startActivity(intent)
-        }
-        containersRv.adapter = containerAdapter
+        val liveChart = findViewById<LineChart>(R.id.chart_live)
+        // bottom list removed
 
         val prefs = Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
         var hostMemHint: Long = 0L
 
-        lifecycleScope.launch {
-            try {
+        fun reload() {
+            swipe.isRefreshing = true
+            lifecycleScope.launch {
+                try {
                 val node = api.getNode(endpointId, nodeId)
                 val nodeTitle = node.Description?.Hostname ?: node.ID
-                title.text = nodeTitle
                 toolbar.title = nodeTitle
                 toolbar.subtitle = Prefs(this@NodeDetailActivity).endpointName()
-                details.text = "ID: ${'$'}{node.ID}\nHostname: ${'$'}{node.Description?.Hostname ?: \"n/a\"}"
                 // Use node hostname (simple text) for agent targeting; fallback to ID
                 agentTargetValue = node.Description?.Hostname ?: node.ID
 
@@ -95,60 +107,25 @@ class NodeDetailActivity : AppCompatActivity() {
                     }
                 }
                 hostMemHint = (memGB * 1024f * 1024f * 1024f).toLong()
-
-                val entries = ArrayList<BarEntry>()
-                entries.add(BarEntry(0f, cpuCores))
-                entries.add(BarEntry(1f, memGB))
-
-                val dataSet = BarDataSet(entries, "Capacity").apply {
-                    setColors(intArrayOf(R.color.purple_500, R.color.teal_700), this@NodeDetailActivity)
-                    valueTextColor = android.graphics.Color.WHITE
-                }
-                chart.data = BarData(dataSet)
-                chart.description.isEnabled = false
-                chart.xAxis.apply {
-                    setDrawGridLines(false)
-                    granularity = 1f
-                    valueFormatter = com.github.mikephil.charting.formatter.IndexAxisValueFormatter(arrayOf("CPU Cores", "Memory GB"))
-                }
-                chart.axisLeft.axisMinimum = 0f
-                chart.axisRight.isEnabled = false
-                chart.invalidate()
+                textCpu.text = String.format("%.0f", cpuCores)
+                textMem.text = String.format("%.1f", memGB)
 
                 // live utilization handled below with repeatOnLifecycle
-
-                // Storage usage pie from /system/df
-                runCatching { api.systemDf(endpointId) }.onSuccess { df: SystemDf ->
-                    val containers = (df.Containers ?: emptyList()).mapNotNull { it.SizeRootFs }.sum()
-                    val images = (df.Images ?: emptyList()).mapNotNull { it.Size }.sum()
-                    val volumes = (df.Volumes ?: emptyList()).mapNotNull { it.UsageData?.Size }.sum()
-                    val total = (df.LayersSize ?: 0L) + containers + images + volumes
-                    if (total > 0L) {
-                        val toGB = 1024f * 1024f * 1024f
-                        val entries = listOf(
-                            com.github.mikephil.charting.data.PieEntry(images / toGB, "Images"),
-                            com.github.mikephil.charting.data.PieEntry(containers / toGB, "Containers"),
-                            com.github.mikephil.charting.data.PieEntry(volumes / toGB, "Volumes")
-                        )
-                        val set = com.github.mikephil.charting.data.PieDataSet(entries, "Storage GB").apply {
-                            setColors(intArrayOf(R.color.purple_500, R.color.teal_700, android.R.color.holo_orange_light), this@NodeDetailActivity)
-                            valueTextColor = android.graphics.Color.WHITE
-                        }
-                        storageChart.data = com.github.mikephil.charting.data.PieData(set)
-                        storageChart.description.isEnabled = false
-                        storageChart.centerText = "Storage"
-                        storageChart.invalidate()
-                    }
+                } catch (e: Exception) {
+                    toolbar.title = "Error loading node"
+                    // details removed
+                } finally {
+                    swipe.isRefreshing = false
                 }
-            } catch (e: Exception) {
-                title.text = "Error loading node"
-                details.text = e.message
             }
-}
+        }
+        // initial load
+        reload()
+        swipe.setOnRefreshListener { reload() }
 
 // Container adapter moved to ui.adapters.ContainerAdapter
 
-        // Live metrics chart with CPU + Memory series
+        // Initialize live chart with CPU and Mem datasets
         val history = Prefs(this).historyLength().coerceIn(20, 240)
         val entriesCpu = (0..history).map { Entry(it.toFloat(), 0f) }
         val entriesMem = (0..history).map { Entry(it.toFloat(), 0f) }
@@ -166,22 +143,19 @@ class NodeDetailActivity : AppCompatActivity() {
         liveChart.description.isEnabled = false
         liveChart.axisRight.isEnabled = false
         liveChart.axisLeft.axisMinimum = 0f
+        // Match chart text (axes/legend) to onSurface, like toolbar title
+        val onSurface = MaterialColors.getColor(liveChart, com.google.android.material.R.attr.colorOnSurface)
+        liveChart.axisLeft.textColor = onSurface
+        liveChart.xAxis.textColor = onSurface
+        liveChart.legend.textColor = onSurface
         liveChart.invalidate()
-
-        // Markers on charts to show values inline
-        val marker = ValueMarker(this)
-        liveChart.marker = marker
-        chart.marker = marker
-        storageChart.marker = marker
-        liveChart.setExtraTopOffset(16f)
-        liveChart.axisLeft.spaceTop = 20f
-
-        // Initialize axis max from persisted value (per endpoint + node)
-        val persistedMax = Prefs(this).getAxisMax(endpointId, nodeId)
-        if (persistedMax > 0f) liveChart.axisLeft.axisMaximum = persistedMax
-
-        // Always show both series
-        setMem.setVisible(true)
+        // Show value on tap via marker
+        liveChart.marker = ValueMarker(this)
+        liveChart.isHighlightPerTapEnabled = true
+        liveChart.setOnChartValueSelectedListener(object : OnChartValueSelectedListener {
+            override fun onValueSelected(e: Entry?, h: Highlight?) { /* marker handles display */ }
+            override fun onNothingSelected() {}
+        })
 
         // Poll live stats while visible
         lifecycleScope.launch {
@@ -191,8 +165,8 @@ class NodeDetailActivity : AppCompatActivity() {
                 if (hostMem <= 0L) hostMem = hostMemHint
                 if (hostMem <= 0L) hostMem = (16L * 1024L * 1024L * 1024L) // conservative fallback
 
-                var axisMaxSeen = if (persistedMax > 0f) persistedMax else 10f
                 val pollInterval = Prefs(this@NodeDetailActivity).pollIntervalMs().coerceIn(1000L, 30000L)
+                var axisMaxSeen = 10f
                 while (true) {
                     try {
                         // All containers for listing; running subset for CPU aggregation
@@ -201,17 +175,20 @@ class NodeDetailActivity : AppCompatActivity() {
                             val nodeLabel = c.Labels?.get("com.docker.swarm.node.id")
                             nodeLabel == nodeId
                         }
-                        containerAdapter.submit(filteredAll)
+                        // removed bottom list submit
 
                         val runningCount = filteredAll.count { (it.State ?: "").equals("running", ignoreCase = true) }
                         val totalCount = filteredAll.size
                         val stoppedCount = totalCount - runningCount
-                        chipTotal.text = "Total ${'$'}totalCount"
-                        chipRunning.text = "Running ${'$'}runningCount"
-                        chipStopped.text = "Stopped ${'$'}stoppedCount"
+                        chipRunning.text = "Running %d".format(runningCount)
+                        chipStopped.text = "Stopped %d".format(stoppedCount)
+                        textContainersCountCard.text = totalCount.toString()
+                        val images = runCatching { api.listImages(endpointId, agentTargetValue) }.getOrDefault(emptyList())
+                        textImagesCount.text = images.size.toString()
+                        val volumesResp = runCatching { api.listVolumes(endpointId, agentTargetValue) }.getOrNull()
+                        textVolumesCount.text = ((volumesResp?.Volumes) ?: emptyList()).size.toString()
 
-                        val containers = filteredAll.filter { (it.State ?: "").equals("running", ignoreCase = true) }
-                        val running = containers.filter { (it.State ?: "").equals("running", ignoreCase = true) }
+                        val running = filteredAll.filter { (it.State ?: "").equals("running", ignoreCase = true) }
                         val stats = running.map { c ->
                             // Include agent target so stats are routed to the correct node
                             async { runCatching { api.containerStats(endpointId, c.Id, false, agentTargetValue) }.getOrNull() }
@@ -233,24 +210,21 @@ class NodeDetailActivity : AppCompatActivity() {
                         val totalMemUsage = stats.sumOf { (it.memory_stats?.usage ?: 0L).toDouble() }.toFloat()
                         val memPct = if (hostMem > 0L) ((totalMemUsage / hostMem.toFloat()) * 100f).coerceIn(0f, 100f) else 0f
 
-                        // shift and append CPU
+                        chipCpu.text = String.format("CPU %d%%", totalCpu.toInt())
+                        chipMem.text = String.format("Mem %d%%", memPct.toInt())
+
+                        // Shift left and append new points
                         for (i in 0 until setCpu.entryCount - 1) {
                             val e = setCpu.getEntryForIndex(i + 1)
                             setCpu.getEntryForIndex(i).y = e.y
                         }
                         setCpu.getEntryForIndex(setCpu.entryCount - 1).y = totalCpu
-
-                        // shift and append Mem
                         for (i in 0 until setMem.entryCount - 1) {
                             val e = setMem.getEntryForIndex(i + 1)
                             setMem.getEntryForIndex(i).y = e.y
                         }
                         setMem.getEntryForIndex(setMem.entryCount - 1).y = memPct
 
-                        chipCpu.text = "CPU ${'$'}{'%d'.format(totalCpu.toInt())}%"
-                        chipMem.text = "Mem ${'$'}{'%d'.format(memPct.toInt())}%"
-
-                        // Dynamic y-axis scaling based on entire dataset; never shrink
                         val maxInData = kotlin.math.max(
                             (0 until setCpu.entryCount).maxOf { setCpu.getEntryForIndex(it).y },
                             (0 until setMem.entryCount).maxOf { setMem.getEntryForIndex(it).y }
@@ -259,9 +233,7 @@ class NodeDetailActivity : AppCompatActivity() {
                         if (targetMax > axisMaxSeen) {
                             axisMaxSeen = targetMax
                             liveChart.axisLeft.axisMaximum = axisMaxSeen
-                            Prefs(this@NodeDetailActivity).setAxisMax(endpointId, nodeId, axisMaxSeen)
                         }
-
                         liveChart.data.notifyDataChanged()
                         liveChart.notifyDataSetChanged()
                         liveChart.invalidate()
@@ -271,6 +243,45 @@ class NodeDetailActivity : AppCompatActivity() {
                     delay(pollInterval)
                 }
             }
+        }
+
+        // Clickable cards to navigate to node item lists
+        cardContainers.setOnClickListener {
+            val i = android.content.Intent(this, NodeContainersActivity::class.java)
+            i.putExtra("endpoint_id", endpointId)
+            i.putExtra("agent_target", agentTargetValue)
+            i.putExtra("node_id", nodeId)
+            startActivity(i)
+        }
+        cardImages.setOnClickListener {
+            val i = android.content.Intent(this, NodeImagesActivity::class.java)
+            i.putExtra("endpoint_id", endpointId)
+            i.putExtra("agent_target", agentTargetValue)
+            startActivity(i)
+        }
+        cardVolumes.setOnClickListener {
+            val i = android.content.Intent(this, NodeVolumesActivity::class.java)
+            i.putExtra("endpoint_id", endpointId)
+            i.putExtra("agent_target", agentTargetValue)
+            startActivity(i)
+        }
+
+        // Chip filters for running/stopped containers
+        chipRunning.setOnClickListener {
+            val i = android.content.Intent(this, NodeContainersActivity::class.java)
+            i.putExtra("endpoint_id", endpointId)
+            i.putExtra("agent_target", agentTargetValue)
+            i.putExtra("node_id", nodeId)
+            i.putExtra("state_filter", "running")
+            startActivity(i)
+        }
+        chipStopped.setOnClickListener {
+            val i = android.content.Intent(this, NodeContainersActivity::class.java)
+            i.putExtra("endpoint_id", endpointId)
+            i.putExtra("agent_target", agentTargetValue)
+            i.putExtra("node_id", nodeId)
+            i.putExtra("state_filter", "stopped")
+            startActivity(i)
         }
     }
 

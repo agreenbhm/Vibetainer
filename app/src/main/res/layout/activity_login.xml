@@ -11,11 +11,11 @@
         android:padding="24dp">
 
         <com.google.android.material.appbar.MaterialToolbar
+            style="@style/Widget.Portainer.MaterialToolbar"
             android:id="@+id/toolbar_login"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/purple_500"
-            android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
+            app:popupTheme="@style/ThemeOverlay.Material3"
             android:title="Connect to Portainer" />
 
         <com.google.android.material.textfield.TextInputLayout
@@ -66,8 +66,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Save &amp; Continue"
-            android:layout_marginTop="20dp"
-            android:backgroundTint="@color/purple_500"
-            android:textColor="@android:color/white" />
+            android:layout_marginTop="20dp" />
     </LinearLayout>
 </ScrollView>

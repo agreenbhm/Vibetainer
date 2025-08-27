@@ -37,6 +37,7 @@ class DashboardActivity : AppCompatActivity() {
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_dashboard)
         setSupportActionBar(toolbar)
+        com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.swipe_dashboard))
 
         val prefs = Prefs(this)
         val endpointId = prefs.endpointId()

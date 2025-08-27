@@ -17,11 +17,11 @@
 
             <!-- Toolbar with no padding to match other screens -->
             <com.google.android.material.appbar.MaterialToolbar
+                style="@style/Widget.Portainer.MaterialToolbar"
                 android:id="@+id/toolbar_dashboard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/purple_500"
-                android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
+                app:popupTheme="@style/ThemeOverlay.Material3"
                 android:title="Dashboard" />
 
             <!-- Content cards with padding -->

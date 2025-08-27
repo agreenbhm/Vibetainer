@@ -7,6 +7,7 @@ import android.widget.Spinner
 import android.widget.ArrayAdapter
 import android.widget.AdapterView
 import android.view.View
+import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
  
@@ -18,6 +19,25 @@ import kotlinx.coroutines.launch
  
 
 class ContainerDetailActivity : AppCompatActivity() {
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_settings -> { startActivity(android.content.Intent(this, SettingsActivity::class.java)); true }
+            R.id.action_switch_endpoint -> { startActivity(android.content.Intent(this, EndpointListActivity::class.java)); true }
+            R.id.action_logout -> {
+                com.example.portainerapp.util.Prefs(this).clearAll()
+                val i = android.content.Intent(this, LoginActivity::class.java)
+                i.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(i)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
     private fun demuxDockerLogs(bytes: ByteArray): String {
         // Docker stdcopy: frame = 8-byte header + payload; header: [stream(1)][000][len(4, BE)]
         val sb = StringBuilder()
@@ -52,6 +72,7 @@ class ContainerDetailActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { finish() }
+        com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.scroll_container))
 
         val txtName = findViewById<TextView>(R.id.text_container_name)
         val txtImage = findViewById<TextView>(R.id.text_container_image)
@@ -60,13 +81,27 @@ class ContainerDetailActivity : AppCompatActivity() {
         val spinnerTail = findViewById<Spinner>(R.id.spinner_tail)
         val switchTimestamps = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switch_timestamps)
         val switchAuto = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switch_autorefresh)
+        val switchFollow = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switch_follow)
         val buttonRefresh = findViewById<Button>(R.id.button_refresh_logs)
         val scroll = findViewById<android.widget.ScrollView>(R.id.scroll_container)
-        var isAtBottom = true
+        var userTouching = false
+        var followLogs = false // toggled via switch or user scroll-to-bottom
+        scroll.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> userTouching = true
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> userTouching = false
+            }
+            false
+        }
         scroll.viewTreeObserver.addOnScrollChangedListener {
             val view = scroll.getChildAt(0)
             val diff = view.bottom - (scroll.height + scroll.scrollY)
-            isAtBottom = diff <= 8
+            val atBottom = diff <= 8
+            if (userTouching) {
+                // Reflect manual intent in the toggle: on when at bottom, off when scrolled up
+                if (atBottom && !switchFollow.isChecked) switchFollow.isChecked = true
+                if (!atBottom && switchFollow.isChecked) switchFollow.isChecked = false
+            }
         }
         val btnStart = findViewById<Button>(R.id.button_start)
         val btnStop = findViewById<Button>(R.id.button_stop)
@@ -123,15 +158,20 @@ class ContainerDetailActivity : AppCompatActivity() {
                     }.getOrNull()
                     val bytes = logsBody?.bytes()
                     val snapshot = if (bytes != null) demuxDockerLogs(bytes) else ""
-                    if (reset || txtLogs.text.isEmpty()) {
-                        txtLogs.text = snapshot
-                    } else {
-                        val appendPart = computeAppend(txtLogs.text.toString(), snapshot)
-                        if (appendPart.isNotEmpty()) {
-                            txtLogs.append(appendPart)
+                    // Snapshot model: replace content each refresh to avoid duplicates
+                    txtLogs.text = snapshot
+                    if (followLogs) {
+                        // Ensure we scroll to bottom before this frame is drawn to avoid mid-frame jumps
+                        val vto = scroll.viewTreeObserver
+                        val listener = object : android.view.ViewTreeObserver.OnPreDrawListener {
+                            override fun onPreDraw(): Boolean {
+                                scroll.viewTreeObserver.removeOnPreDrawListener(this)
+                                scroll.fullScroll(View.FOCUS_DOWN)
+                                return true
+                            }
                         }
+                        vto.addOnPreDrawListener(listener)
                     }
-                    if (isAtBottom) scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
                 } catch (e: Exception) {
                     txtStatus.text = "Error: ${'$'}{e.message}"
                 }
@@ -161,6 +201,10 @@ class ContainerDetailActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
         switchAuto.setOnCheckedChangeListener { _, isChecked -> prefs.setLogsAutoRefresh(isChecked) }
+        switchFollow.setOnCheckedChangeListener { _, isChecked ->
+            followLogs = isChecked
+            if (isChecked) scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+        }
         lifecycleScope.launch {
             while (true) {
                 kotlinx.coroutines.delay(1000)
@@ -169,22 +213,6 @@ class ContainerDetailActivity : AppCompatActivity() {
         }
 
         // Streaming removed per request; using snapshot only
-    }
-
-    private fun computeAppend(existing: String, snapshot: String): String {
-        if (existing.isEmpty()) return snapshot
-        if (snapshot.isEmpty()) return ""
-        val maxOverlap = minOf(existing.length, snapshot.length, 4000)
-        var k = maxOverlap
-        while (k > 0) {
-            val suffix = existing.substring(existing.length - k)
-            if (snapshot.startsWith(suffix)) {
-                return snapshot.substring(k)
-            }
-            k--
-        }
-        // No overlap; if snapshot is entirely new segment, append whole snapshot
-        return snapshot
     }
 
     // Streaming helpers removed; using snapshot logs in refresh()

@@ -28,13 +28,14 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { finish() }
+        com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.swipe_refresh))
 
         val recycler = findViewById<RecyclerView>(R.id.recycler_nodes)
         recycler.layoutManager = LinearLayoutManager(this)
         val adapter = NodesAdapter { node ->
             val intent = Intent(this, com.example.portainerapp.ui.NodeDetailActivity::class.java)
-            intent.putExtra(NodeDetailActivity.EXTRA_NODE_ID, node.ID)
-            intent.putExtra(NodeDetailActivity.EXTRA_ENDPOINT_ID, Prefs(this).endpointId())
+            intent.putExtra("node_id", node.ID)
+            intent.putExtra("endpoint_id", Prefs(this).endpointId())
             startActivity(intent)
         }
         recycler.adapter = adapter

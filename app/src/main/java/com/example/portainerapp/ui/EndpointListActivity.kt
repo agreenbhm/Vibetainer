@@ -33,6 +33,7 @@ class EndpointListActivity : AppCompatActivity() {
             }
         }
         supportActionBar?.title = "Endpoints"
+        com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.recycler_endpoints))
 
         val recycler = findViewById<RecyclerView>(R.id.recycler_endpoints)
         recycler.layoutManager = LinearLayoutManager(this)

@@ -92,6 +92,18 @@ interface PortainerService {
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     ): List<ContainerSummary>
 
+    @GET("api/endpoints/{endpointId}/docker/images/json")
+    suspend fun listImages(
+        @Path("endpointId") endpointId: Int,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): List<ImageSummary>
+
+    @GET("api/endpoints/{endpointId}/docker/volumes")
+    suspend fun listVolumes(
+        @Path("endpointId") endpointId: Int,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): VolumesResponse
+
     @GET("api/endpoints/{endpointId}/docker/containers/{id}/stats")
     suspend fun containerStats(
         @Path("endpointId") endpointId: Int,
@@ -163,6 +175,22 @@ data class CpuUsage(
 data class MemoryStats(
     val usage: Long?,
     val limit: Long?
+)
+
+
+data class ImageSummary(
+    val Id: String?,
+    val RepoTags: List<String>?
+)
+
+
+data class VolumesResponse(
+    val Volumes: List<Volume>?
+)
+
+
+data class Volume(
+    val Name: String?
 )
 
 data class ContainerInspect(

@@ -50,5 +50,14 @@
         <activity
             android:name=".ui.StacksListActivity"
             android:exported="false" />
+            <activity
+            android:name=".ui.NodeImagesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.NodeVolumesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.NodeContainersActivity"
+            android:exported="false" />
     </application>
 </manifest>

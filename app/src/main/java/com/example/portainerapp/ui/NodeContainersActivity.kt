@@ -11,29 +11,19 @@ import com.google.android.material.chip.Chip
 import com.example.portainerapp.R
 import com.example.portainerapp.network.PortainerApi
 import com.example.portainerapp.ui.adapters.ContainerAdapter
-import com.example.portainerapp.util.Prefs
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 
-class ContainersListActivity : AppCompatActivity() {
-    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
-    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_settings -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
-            R.id.action_switch_endpoint -> { startActivity(Intent(this, EndpointListActivity::class.java)); true }
-            R.id.action_logout -> { com.example.portainerapp.util.Prefs(this).clearAll(); startActivity(Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)); true }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
-
+class NodeContainersActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_containers_list)
+
+        val endpointId = intent.getIntExtra("endpoint_id", -1)
+        val agentTarget = intent.getStringExtra("agent_target")
+        val nodeId = intent.getStringExtra("node_id")
+        val stateFilter = intent.getStringExtra("state_filter") // "running", "stopped", or null
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_list)
         toolbar.title = "Containers"
@@ -49,19 +39,19 @@ class ContainersListActivity : AppCompatActivity() {
         val chipStopped: Chip = findViewById(R.id.chip_filter_stopped)
         recycler.layoutManager = LinearLayoutManager(this)
 
-        val prefs = Prefs(this)
+        val prefs = com.example.portainerapp.util.Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
-        val endpointId = prefs.endpointId()
 
         val adapter = ContainerAdapter { c ->
             val i = Intent(this, ContainerDetailActivity::class.java)
             i.putExtra(ContainerDetailActivity.EXTRA_ENDPOINT_ID, endpointId)
             i.putExtra(ContainerDetailActivity.EXTRA_CONTAINER_ID, c.Id)
-                        startActivity(i)
+            i.putExtra(ContainerDetailActivity.EXTRA_AGENT_TARGET, agentTarget)
+            startActivity(i)
         }
         recycler.adapter = adapter
 
-        var allContainers: List<com.example.portainerapp.network.ContainerSummary> = emptyList()
+        var baseForNode: List<com.example.portainerapp.network.ContainerSummary> = emptyList()
 
         fun applyFilter() {
             val sel = when {
@@ -69,10 +59,11 @@ class ContainersListActivity : AppCompatActivity() {
                 chipStopped.isChecked -> "stopped"
                 else -> null
             }
-            val filtered = when (sel) {
-                "running" -> allContainers.filter { (it.State ?: "").equals("running", ignoreCase = true) }
-                "stopped" -> allContainers.filter { !(it.State ?: "").equals("running", ignoreCase = true) }
-                else -> allContainers
+            var filtered = baseForNode
+            filtered = when (sel) {
+                "running" -> filtered.filter { (it.State ?: "").equals("running", ignoreCase = true) }
+                "stopped" -> filtered.filter { !(it.State ?: "").equals("running", ignoreCase = true) }
+                else -> filtered
             }
             adapter.submit(filtered)
         }
@@ -81,18 +72,23 @@ class ContainersListActivity : AppCompatActivity() {
             swipe.isRefreshing = true
             lifecycleScope.launch {
                 try {
-                    allContainers = api.listContainers(endpointId, false, null)
+                    val all = api.listContainers(endpointId, true, agentTarget)
+                    baseForNode = all.filter { it.Labels?.get("com.docker.swarm.node.id") == nodeId }
                     applyFilter()
                 } catch (e: Exception) {
-                    Snackbar.make(recycler, "Failed: ${'$'}{e.message}", Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(recycler, "Failed: ${e.message}", Snackbar.LENGTH_LONG).show()
                 } finally {
                     swipe.isRefreshing = false
                 }
             }
         }
-
         swipe.setOnRefreshListener { load() }
-        chipAll.isChecked = true
+        // Initialize chips from incoming filter
+        when (stateFilter?.lowercase()) {
+            "running" -> chipRunning.isChecked = true
+            "stopped" -> chipStopped.isChecked = true
+            else -> chipAll.isChecked = true
+        }
         chipAll.setOnClickListener { applyFilter() }
         chipRunning.setOnClickListener { applyFilter() }
         chipStopped.setOnClickListener { applyFilter() }

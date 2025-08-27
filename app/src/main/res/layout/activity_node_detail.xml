@@ -1,36 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.swiperefreshlayout.widget.SwipeRefreshLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/swipe_node_detail"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="match_parent">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolbar_detail"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/purple_500"
-            android:theme="@style/ThemeOverlay.Material3.Dark.ActionBar"
-            android:title="Node" />
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/text_node_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:text="Node Title" />
+            <com.google.android.material.appbar.MaterialToolbar
+                style="@style/Widget.Portainer.MaterialToolbar"
+                android:id="@+id/toolbar_detail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:popupTheme="@style/ThemeOverlay.Material3"
+                android:title="Node" />
 
-        <TextView
-            android:id="@+id/text_node_details"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Details" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+        <!-- Node title/details removed for cleaner header -->
 
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chips_metrics"
@@ -52,66 +50,157 @@
                 android:text="Mem 0%" />
         </com.google.android.material.chip.ChipGroup>
 
-        <!-- Always show both CPU and Memory lines -->
-
-        <com.github.mikephil.charting.charts.BarChart
-            android:id="@+id/chart_placeholder"
+        <!-- Capacity summary -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="250dp"
-            android:layout_marginTop="16dp" />
-
-        <com.github.mikephil.charting.charts.PieChart
-            android:id="@+id/chart_storage"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="CPU Cores:"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/text_cpu_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="-" />
+        </LinearLayout>
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="250dp"
-            android:layout_marginTop="16dp" />
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Memory (GB):"
+                android:textStyle="bold" />
+            <TextView
+                android:id="@+id/text_mem_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="-" />
+        </LinearLayout>
 
+        <!-- Live CPU/Mem line chart -->
         <com.github.mikephil.charting.charts.LineChart
             android:id="@+id/chart_live"
             android:layout_width="match_parent"
             android:layout_height="250dp"
-            android:layout_marginTop="16dp" />
+            android:layout_marginTop="12dp" />
 
-        <TextView
-            android:id="@+id/label_containers"
+        <!-- Resource cards -->
+        <androidx.cardview.widget.CardView
+            xmlns:card_view="http://schemas.android.com/apk/res-auto"
+            android:id="@+id/card_containers_node"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Containers"
-            android:textStyle="bold"
-            android:textSize="18sp" />
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            card_view:cardCornerRadius="12dp"
+            card_view:cardUseCompatPadding="true">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Containers"
+                        android:textSize="18sp" />
+                    <TextView
+                        android:id="@+id/text_containers_count_card"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="-" />
+                </LinearLayout>
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chips_container_counts"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp">
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_running"
+                        style="@style/Widget.Material3.Chip.Assist.Elevated"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Running 0" />
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_stopped"
+                        style="@style/Widget.Material3.Chip.Assist.Elevated"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Stopped 0" />
+                </com.google.android.material.chip.ChipGroup>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
-        <com.google.android.material.chip.ChipGroup
-            android:id="@+id/chips_container_counts"
+        <androidx.cardview.widget.CardView
+            xmlns:card_view="http://schemas.android.com/apk/res-auto"
+            android:id="@+id/card_images_node"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp">
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_total"
-                style="@style/Widget.Material3.Chip.Assist.Elevated"
-                android:layout_width="wrap_content"
+            android:layout_marginBottom="4dp"
+            card_view:cardCornerRadius="12dp"
+            card_view:cardUseCompatPadding="true">
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Total 0" />
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_running"
-                style="@style/Widget.Material3.Chip.Assist.Elevated"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Running 0" />
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chip_stopped"
-                style="@style/Widget.Material3.Chip.Assist.Elevated"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Stopped 0" />
-        </com.google.android.material.chip.ChipGroup>
+                android:orientation="horizontal"
+                android:padding="16dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Images"
+                    android:textSize="18sp" />
+                <TextView
+                    android:id="@+id/text_images_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_containers"
+        <androidx.cardview.widget.CardView
+            xmlns:card_view="http://schemas.android.com/apk/res-auto"
+            android:id="@+id/card_volumes_node"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:nestedScrollingEnabled="false"
-            android:layout_marginTop="8dp" />
+            card_view:cardCornerRadius="12dp"
+            card_view:cardUseCompatPadding="true">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Volumes"
+                    android:textSize="18sp" />
+                <TextView
+                    android:id="@+id/text_volumes_count"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
 
-    </LinearLayout>
-</ScrollView>
+        
+
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

@@ -28,6 +28,7 @@ class LoginActivity : AppCompatActivity() {
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_login)
         setSupportActionBar(toolbar)
+        com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(android.R.id.content))
 
         val domainLayout = findViewById<TextInputLayout>(R.id.input_domain_layout)
         val portLayout = findViewById<TextInputLayout>(R.id.input_port_layout)
