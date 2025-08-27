@@ -15,18 +15,7 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 
 class StacksListActivity : AppCompatActivity() {
-    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
-    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_settings -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
-            R.id.action_switch_endpoint -> { startActivity(Intent(this, EndpointListActivity::class.java)); true }
-            R.id.action_logout -> { com.example.portainerapp.util.Prefs(this).clearAll(); startActivity(Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)); true }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
+    // No overflow menu on this screen
 
 
     override fun onCreate(savedInstanceState: Bundle?) {

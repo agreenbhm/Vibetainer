@@ -48,6 +48,9 @@
             android:name=".ui.ServicesListActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.ServiceContainersActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.StacksListActivity"
             android:exported="false" />
             <activity

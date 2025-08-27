@@ -19,10 +19,11 @@
         android:paddingEnd="12dp"
         android:paddingTop="8dp"
         android:paddingBottom="4dp"
-        app:singleSelection="true">
+        app:singleSelection="true"
+        app:selectionRequired="true">
         <com.google.android.material.chip.Chip
             android:id="@+id/chip_filter_all"
-            style="@style/Widget.Material3.Chip.Assist.Elevated"
+            style="@style/Widget.Material3.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="All"
@@ -30,14 +31,14 @@
             android:checked="true" />
         <com.google.android.material.chip.Chip
             android:id="@+id/chip_filter_running"
-            style="@style/Widget.Material3.Chip.Assist.Elevated"
+            style="@style/Widget.Material3.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Running"
             android:checkable="true" />
         <com.google.android.material.chip.Chip
             android:id="@+id/chip_filter_stopped"
-            style="@style/Widget.Material3.Chip.Assist.Elevated"
+            style="@style/Widget.Material3.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Stopped"

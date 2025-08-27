@@ -26,26 +26,27 @@ class SettingsActivity : AppCompatActivity() {
         val history = findViewById<TextInputEditText>(R.id.input_history)
         val pollLayout = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.layout_poll_ms)
         val historyLayout = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.layout_history)
-        val showHeaderTotal = findViewById<MaterialSwitch>(R.id.switch_header_total)
         val proxyEnabled = findViewById<MaterialSwitch>(R.id.switch_proxy_enabled)
         val proxyHostLayout = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.layout_proxy_host)
-        val proxyPortLayout = findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.layout_proxy_port)
         val proxyHost = findViewById<TextInputEditText>(R.id.input_proxy_host)
-        val proxyPort = findViewById<TextInputEditText>(R.id.input_proxy_port)
         val ignoreSsl = findViewById<MaterialSwitch>(R.id.switch_ignore_ssl)
         val save = findViewById<Button>(R.id.button_save_settings)
 
         poll.setText(prefs.pollIntervalMs().toString())
         history.setText(prefs.historyLength().toString())
-        showHeaderTotal.isChecked = prefs.showHeaderTotal()
         proxyEnabled.isChecked = prefs.proxyEnabled()
-        proxyHost.setText(prefs.proxyHost())
-        proxyPort.setText(if (prefs.proxyPort() > 0) prefs.proxyPort().toString() else "")
+        val existingProxyUrl = prefs.proxyUrl()
+        if (existingProxyUrl.isNotBlank()) {
+            proxyHost.setText(existingProxyUrl)
+        } else {
+            val host = prefs.proxyHost()
+            val port = prefs.proxyPort()
+            if (host.isNotBlank() && port > 0) proxyHost.setText("http://$host:$port")
+        }
         ignoreSsl.isChecked = prefs.ignoreSslErrors()
 
         fun updateProxyFields(enabled: Boolean) {
             proxyHostLayout.isEnabled = enabled
-            proxyPortLayout.isEnabled = enabled
         }
         updateProxyFields(proxyEnabled.isChecked)
         proxyEnabled.setOnCheckedChangeListener { _, isChecked -> updateProxyFields(isChecked) }
@@ -71,26 +72,37 @@ class SettingsActivity : AppCompatActivity() {
 
             // Proxy validation (optional)
             proxyHostLayout.error = null
-            proxyPortLayout.error = null
             if (proxyEnabled.isChecked) {
-                val host = proxyHost.text?.toString()?.trim().orEmpty()
-                val portVal = proxyPort.text?.toString()?.toIntOrNull()
-                if (host.isEmpty()) { proxyHostLayout.error = "Required"; valid = false }
-                if (portVal == null || portVal !in 1..65535) { proxyPortLayout.error = "1–65535"; valid = false }
+                var url = proxyHost.text?.toString()?.trim().orEmpty()
+                if (url.isEmpty()) { proxyHostLayout.error = "Required"; valid = false }
+                if (!url.startsWith("http://", true) && !url.startsWith("https://", true)) {
+                    // Default to http if not provided
+                    url = "http://" + url
+                    proxyHost.setText(url)
+                }
+                // Basic check for host
+                val after = url.substringAfter("://").trimEnd('/')
+                if (after.isEmpty()) { proxyHostLayout.error = "Required"; valid = false }
             }
 
             if (!valid) return@setOnClickListener
 
             prefs.setPollIntervalMs(pollMs!!.toLong())
             prefs.setHistoryLength(hist!!)
-            prefs.setShowHeaderTotal(showHeaderTotal.isChecked)
+            // Header total toggle removed
             prefs.setProxyEnabled(proxyEnabled.isChecked)
             if (proxyEnabled.isChecked) {
-                prefs.setProxyHost(proxyHost.text?.toString()?.trim().orEmpty())
-                prefs.setProxyPort(proxyPort.text?.toString()?.toIntOrNull() ?: 0)
+                var url = proxyHost.text?.toString()?.trim().orEmpty()
+                if (!url.startsWith("http://", true) && !url.startsWith("https://", true)) {
+                    url = "http://" + url
+                }
+                val normalized = prefs.normalizeBaseUrl(url).removeSuffix("/")
+                prefs.setProxyUrl(normalized)
             } else {
+                prefs.setProxyUrl("")
                 prefs.setProxyHost("")
                 prefs.setProxyPort(0)
+                prefs.setProxyScheme("http")
             }
             prefs.setIgnoreSslErrors(ignoreSsl.isChecked)
             finish()

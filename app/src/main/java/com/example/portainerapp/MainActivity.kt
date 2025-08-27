@@ -64,7 +64,7 @@ class MainActivity : AppCompatActivity() {
                     emptyView.visibility = if (nodes.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
                     // After nodes are loaded, fetch running containers and map to nodes (Swarm label)
                     runCatching {
-                        val containers = api.listContainers(endpointId, false)
+                        val containers = api.listContainers(endpointId, true)
                         val running = containers.filter { (it.State ?: "").equals("running", ignoreCase = true) }
                         val counts = mutableMapOf<String, Int>()
                         running.forEach { c: ContainerSummary ->
@@ -98,32 +98,7 @@ class MainActivity : AppCompatActivity() {
         loadNodes()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_switch_endpoint -> {
-                startActivity(Intent(this, com.example.portainerapp.ui.EndpointListActivity::class.java))
-                true
-            }
-            R.id.action_settings -> {
-                startActivity(Intent(this, com.example.portainerapp.ui.SettingsActivity::class.java))
-                true
-            }
-            R.id.action_logout -> {
-                Prefs(this).clearAll()
-                val i = Intent(this, com.example.portainerapp.ui.LoginActivity::class.java)
-                i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(i)
-                true
-            }
-
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
+    // No overflow menu on this screen
 }
 
 class NodesAdapter(private val onClick: (DockerNode) -> Unit) : RecyclerView.Adapter<NodeVH>() {

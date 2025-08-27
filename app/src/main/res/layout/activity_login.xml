@@ -23,28 +23,15 @@
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Domain"
-            app:helperText="e.g., portainer.example.com">
+            android:hint="Server URL"
+            app:helperText="e.g., https://portainer.example.com or portainer.example.com:9443">
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/input_domain"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/input_port_layout"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Port"
-            app:helperText="e.g., 9443"
-            android:layout_marginTop="12dp">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/input_port"
-                android:inputType="number"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-        </com.google.android.material.textfield.TextInputLayout>
+        <!-- Removed separate port input; include in URL if needed -->
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/input_token_layout"

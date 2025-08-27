@@ -19,25 +19,7 @@ import kotlinx.coroutines.launch
  
 
 class ContainerDetailActivity : AppCompatActivity() {
-    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_settings -> { startActivity(android.content.Intent(this, SettingsActivity::class.java)); true }
-            R.id.action_switch_endpoint -> { startActivity(android.content.Intent(this, EndpointListActivity::class.java)); true }
-            R.id.action_logout -> {
-                com.example.portainerapp.util.Prefs(this).clearAll()
-                val i = android.content.Intent(this, LoginActivity::class.java)
-                i.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(i)
-                true
-            }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
+    // No overflow menu on this screen
     private fun demuxDockerLogs(bytes: ByteArray): String {
         // Docker stdcopy: frame = 8-byte header + payload; header: [stream(1)][000][len(4, BE)]
         val sb = StringBuilder()

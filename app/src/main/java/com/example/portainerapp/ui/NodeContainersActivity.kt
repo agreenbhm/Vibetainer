@@ -42,12 +42,21 @@ class NodeContainersActivity : AppCompatActivity() {
         val prefs = com.example.portainerapp.util.Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
 
-        val adapter = ContainerAdapter { c ->
+        val adapter = ContainerAdapter({ c ->
             val i = Intent(this, ContainerDetailActivity::class.java)
             i.putExtra(ContainerDetailActivity.EXTRA_ENDPOINT_ID, endpointId)
             i.putExtra(ContainerDetailActivity.EXTRA_CONTAINER_ID, c.Id)
             i.putExtra(ContainerDetailActivity.EXTRA_AGENT_TARGET, agentTarget)
             startActivity(i)
+        }) { c ->
+            // Subtitle: cleaned image:tag only (no sha digest)
+            val raw = c.Image.orEmpty()
+            when {
+                raw.isBlank() -> ""
+                raw.startsWith("sha256:") -> ""
+                raw.matches(Regex("[a-f0-9]{64}")) -> ""
+                else -> raw.substringBefore('@')
+            }
         }
         recycler.adapter = adapter
 
@@ -92,6 +101,17 @@ class NodeContainersActivity : AppCompatActivity() {
         chipAll.setOnClickListener { applyFilter() }
         chipRunning.setOnClickListener { applyFilter() }
         chipStopped.setOnClickListener { applyFilter() }
+        val chipGroup: com.google.android.material.chip.ChipGroup = findViewById(R.id.chip_group_state)
+        var changing = false
+        chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (changing) return@setOnCheckedStateChangeListener
+            if (checkedIds.isEmpty()) {
+                changing = true
+                chipAll.isChecked = true
+                changing = false
+            }
+            applyFilter()
+        }
         load()
     }
 }

@@ -17,18 +17,7 @@ import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 
 class ContainersListActivity : AppCompatActivity() {
-    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
-    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_settings -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
-            R.id.action_switch_endpoint -> { startActivity(Intent(this, EndpointListActivity::class.java)); true }
-            R.id.action_logout -> { com.example.portainerapp.util.Prefs(this).clearAll(); startActivity(Intent(this, LoginActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)); true }
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
+    // No overflow menu on this screen
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,11 +42,20 @@ class ContainersListActivity : AppCompatActivity() {
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
         val endpointId = prefs.endpointId()
 
-        val adapter = ContainerAdapter { c ->
+        val adapter = ContainerAdapter({ c ->
             val i = Intent(this, ContainerDetailActivity::class.java)
             i.putExtra(ContainerDetailActivity.EXTRA_ENDPOINT_ID, endpointId)
             i.putExtra(ContainerDetailActivity.EXTRA_CONTAINER_ID, c.Id)
-                        startActivity(i)
+            startActivity(i)
+        }) { c ->
+            // Subtitle: cleaned image:tag only (no sha digest)
+            val raw = c.Image.orEmpty()
+            when {
+                raw.isBlank() -> ""
+                raw.startsWith("sha256:") -> ""
+                raw.matches(Regex("[a-f0-9]{64}")) -> ""
+                else -> raw.substringBefore('@')
+            }
         }
         recycler.adapter = adapter
 
@@ -81,7 +79,7 @@ class ContainersListActivity : AppCompatActivity() {
             swipe.isRefreshing = true
             lifecycleScope.launch {
                 try {
-                    allContainers = api.listContainers(endpointId, false, null)
+                    allContainers = api.listContainers(endpointId, true, null)
                     applyFilter()
                 } catch (e: Exception) {
                     Snackbar.make(recycler, "Failed: ${'$'}{e.message}", Snackbar.LENGTH_LONG).show()
@@ -92,10 +90,28 @@ class ContainersListActivity : AppCompatActivity() {
         }
 
         swipe.setOnRefreshListener { load() }
-        chipAll.isChecked = true
+        val incoming = intent.getStringExtra("state_filter")?.lowercase()
+        when (incoming) {
+            "running" -> chipRunning.isChecked = true
+            "stopped" -> chipStopped.isChecked = true
+            else -> chipAll.isChecked = true
+        }
         chipAll.setOnClickListener { applyFilter() }
         chipRunning.setOnClickListener { applyFilter() }
         chipStopped.setOnClickListener { applyFilter() }
+
+        // Enforce that at least one chip is always selected; default to All
+        val chipGroup: com.google.android.material.chip.ChipGroup = findViewById(R.id.chip_group_state)
+        var changing = false
+        chipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (changing) return@setOnCheckedStateChangeListener
+            if (checkedIds.isEmpty()) {
+                changing = true
+                chipAll.isChecked = true
+                changing = false
+            }
+            applyFilter()
+        }
         load()
     }
 }

@@ -11,6 +11,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.POST
 import retrofit2.http.Header
+import retrofit2.http.Body
 import okhttp3.ResponseBody
 import retrofit2.http.Streaming
 
@@ -88,7 +89,7 @@ interface PortainerService {
     @GET("api/endpoints/{endpointId}/docker/containers/json")
     suspend fun listContainers(
         @Path("endpointId") endpointId: Int,
-        @Query("all") all: Boolean = false,
+        @Query("all") all: Boolean = true,
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     ): List<ContainerSummary>
 
@@ -145,6 +146,21 @@ interface PortainerService {
         @Path("id") id: String,
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     )
+
+    // Services inspect/update
+    @GET("api/endpoints/{endpointId}/docker/services/{id}")
+    suspend fun serviceInspect(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String
+    ): ServiceInspect
+
+    @POST("api/endpoints/{endpointId}/docker/services/{id}/update")
+    suspend fun serviceUpdate(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Query("version") version: Long,
+        @Body spec: ServiceSpecFull
+    ): retrofit2.Response<Unit>
 }
 
 data class ContainerSummary(
@@ -212,6 +228,24 @@ data class ServiceSpec(
     val Name: String?
 )
 
+// Service inspect/update models (minimal)
+data class ServiceInspect(
+    val ID: String?,
+    val Version: Version?,
+    val Spec: ServiceSpecFull?
+)
+data class Version(val Index: Long?)
+data class ServiceSpecFull(
+    val Name: String?,
+    val TaskTemplate: TaskTemplate?,
+    val Labels: Map<String, String>? = null
+)
+data class TaskTemplate(
+    val ForceUpdate: Int?,
+    val ContainerSpec: ContainerSpec?
+)
+data class ContainerSpec(val Image: String?)
+
 data class Stack(
     val Id: Int?,
     val Name: String?,
@@ -265,11 +299,26 @@ object PortainerApi {
 
         // Configure HTTP proxy if enabled
         if (prefs.proxyEnabled()) {
-            val host = prefs.proxyHost()
-            val port = prefs.proxyPort()
-            if (host.isNotBlank() && port in 1..65535) {
-                val proxy = java.net.Proxy(java.net.Proxy.Type.HTTP, java.net.InetSocketAddress(host, port))
-                builder.proxy(proxy)
+            val url = prefs.proxyUrl()
+            if (url.isNotBlank()) {
+                try {
+                    val normalized = prefs.normalizeBaseUrl(url).removeSuffix("/")
+                    val scheme = if (normalized.startsWith("https://", true)) "https" else "http"
+                    val after = normalized.substringAfter("://")
+                    val host = after.substringBefore(":")
+                    val portStr = after.substringAfter(":", "")
+                    val port = portStr.toIntOrNull() ?: if (scheme == "https") 443 else 80
+                    val proxy = java.net.Proxy(java.net.Proxy.Type.HTTP, java.net.InetSocketAddress(host, port))
+                    builder.proxy(proxy)
+                } catch (_: Exception) { /* ignore invalid proxy URL */ }
+            } else {
+                // Back-compat: host/port settings
+                val host = prefs.proxyHost()
+                val port = prefs.proxyPort()
+                if (host.isNotBlank() && port in 1..65535) {
+                    val proxy = java.net.Proxy(java.net.Proxy.Type.HTTP, java.net.InetSocketAddress(host, port))
+                    builder.proxy(proxy)
+                }
             }
         }
 

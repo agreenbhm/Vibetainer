@@ -69,19 +69,44 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:padding="16dp">
-                        <TextView
-                            android:layout_width="0dp"
+                        android:orientation="vertical">
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Containers (running)"
-                            android:textSize="18sp" />
-                        <TextView
-                            android:id="@+id/text_containers_count"
-                            android:layout_width="wrap_content"
+                            android:orientation="horizontal"
+                            android:padding="16dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="Containers"
+                                android:textSize="18sp" />
+                            <TextView
+                                android:id="@+id/text_containers_count"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="-" />
+                        </LinearLayout>
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/chips_dashboard_containers"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="-" />
+                            android:paddingStart="16dp"
+                            android:paddingEnd="16dp"
+                            android:paddingBottom="12dp">
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_running"
+                                style="@style/Widget.Material3.Chip.Assist.Elevated"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Running 0" />
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip_stopped"
+                                style="@style/Widget.Material3.Chip.Assist.Elevated"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Stopped 0" />
+                        </com.google.android.material.chip.ChipGroup>
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 

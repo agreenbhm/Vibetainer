@@ -54,6 +54,10 @@ class Prefs(context: Context) {
     fun setProxyHost(v: String) { prefs.edit().putString(KEY_PROXY_HOST, v).apply() }
     fun proxyPort(): Int = prefs.getInt(KEY_PROXY_PORT, 0)
     fun setProxyPort(v: Int) { prefs.edit().putInt(KEY_PROXY_PORT, v).apply() }
+    fun proxyScheme(): String = prefs.getString(KEY_PROXY_SCHEME, "http") ?: "http"
+    fun setProxyScheme(v: String) { prefs.edit().putString(KEY_PROXY_SCHEME, if (v.equals("https", true)) "https" else "http").apply() }
+    fun proxyUrl(): String = prefs.getString(KEY_PROXY_URL, "") ?: ""
+    fun setProxyUrl(v: String) { prefs.edit().putString(KEY_PROXY_URL, v).apply() }
     fun ignoreSslErrors(): Boolean = prefs.getBoolean(KEY_IGNORE_SSL, false)
     fun setIgnoreSslErrors(v: Boolean) { prefs.edit().putBoolean(KEY_IGNORE_SSL, v).apply() }
     fun clearAll() { prefs.edit().clear().apply() }
@@ -77,9 +81,39 @@ class Prefs(context: Context) {
     private fun axisKey(endpointId: Int, nodeId: String) = "axis_max_${'$'}endpointId_${'$'}nodeId"
 
     private fun buildBaseUrl(domain: String, port: String): String {
-        val scheme = if (domain.startsWith("http")) "" else "https://"
-        val host = domain.removeSuffix("/")
-        return "$scheme$host:$port/"
+        val trimmed = domain.trim()
+        val scheme = when {
+            trimmed.startsWith("http://", true) -> "http"
+            trimmed.startsWith("https://", true) -> "https"
+            else -> "https"
+        }
+        val host = trimmed
+            .removePrefix("http://")
+            .removePrefix("https://")
+            .trimEnd('/')
+        return "$scheme://$host:$port/"
+    }
+
+    fun saveBaseUrl(url: String, token: String) {
+        val normalized = normalizeBaseUrl(url)
+        prefs.edit().putString(KEY_BASE_URL, normalized).putString(KEY_TOKEN, token).apply()
+    }
+
+    fun normalizeBaseUrl(input: String): String {
+        val u = input.trim()
+        val hasProto = u.startsWith("http://", true) || u.startsWith("https://", true)
+        val scheme = when {
+            u.startsWith("http://", true) -> "http"
+            u.startsWith("https://", true) -> "https"
+            else -> "https"
+        }
+        val rest = if (hasProto) u.substringAfter("://") else u
+        val hostPort = rest.trimEnd('/')
+        val parts = hostPort.split(":", limit = 2)
+        val host = parts[0]
+        val port = if (parts.size == 2) parts[1].toIntOrNull() else null
+        val portFinal = port ?: if (scheme == "http") 80 else 443
+        return "$scheme://$host:$portFinal/"
     }
 
     companion object {
@@ -93,6 +127,8 @@ class Prefs(context: Context) {
         private const val KEY_PROXY_ENABLED = "proxy_enabled"
         private const val KEY_PROXY_HOST = "proxy_host"
         private const val KEY_PROXY_PORT = "proxy_port"
+        private const val KEY_PROXY_SCHEME = "proxy_scheme"
+        private const val KEY_PROXY_URL = "proxy_url"
         private const val KEY_IGNORE_SSL = "ignore_ssl_errors"
         private const val KEY_LOGS_TAIL = "logs_tail"
         private const val KEY_LOGS_TIMESTAMPS = "logs_timestamps"

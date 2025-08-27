@@ -24,15 +24,8 @@ class EndpointListActivity : AppCompatActivity() {
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_endpoints)
         setSupportActionBar(toolbar)
-        toolbar.inflateMenu(R.menu.menu_main)
-        toolbar.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                R.id.action_settings -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
-                R.id.action_switch_endpoint -> { true }
-                else -> false
-            }
-        }
-        supportActionBar?.title = "Endpoints"
+        // No overflow menu on this screen
+        supportActionBar?.title = "Environments"
         com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.recycler_endpoints))
 
         val recycler = findViewById<RecyclerView>(R.id.recycler_endpoints)

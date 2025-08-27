@@ -52,12 +52,7 @@
                 android:inputType="number" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/switch_header_total"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Show header total when per-node counts unavailable" />
+        <!-- Removed: header total toggle -->
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/switch_proxy_enabled"
@@ -65,6 +60,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="Use HTTP proxy" />
+
+        <!-- HTTPS proxy toggle removed; not supported by OkHttp as upstream proxy -->
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/layout_proxy_host"
@@ -77,17 +74,7 @@
                 android:layout_height="wrap_content" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layout_proxy_port"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="Proxy port">
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/input_proxy_port"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number" />
-        </com.google.android.material.textfield.TextInputLayout>
+        <!-- Removed explicit proxy port; include in URL if needed -->
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/switch_ignore_ssl"

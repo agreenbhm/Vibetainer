@@ -10,26 +10,28 @@ import com.example.portainerapp.network.ContainerSummary
 import com.google.android.material.chip.Chip
 
 class ContainerAdapter(
-    private val onClick: (ContainerSummary) -> Unit
+    private val onClick: (ContainerSummary) -> Unit,
+    val subtitleProvider: ((ContainerSummary) -> String?)? = null
 ) : RecyclerView.Adapter<ContainerVH>() {
     private val items = mutableListOf<ContainerSummary>()
     fun submit(list: List<ContainerSummary>) { items.clear(); items.addAll(list); notifyDataSetChanged() }
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ContainerVH {
         val v = LayoutInflater.from(parent.context).inflate(R.layout.item_container, parent, false)
-        return ContainerVH(v, onClick)
+        return ContainerVH(v, onClick, subtitleProvider)
     }
     override fun getItemCount(): Int = items.size
     override fun onBindViewHolder(holder: ContainerVH, position: Int) = holder.bind(items[position])
 }
 
-class ContainerVH(itemView: View, private val onClick: (ContainerSummary) -> Unit) : RecyclerView.ViewHolder(itemView) {
+class ContainerVH(itemView: View, private val onClick: (ContainerSummary) -> Unit, private val subtitleProvider: ((ContainerSummary) -> String?)? = null) : RecyclerView.ViewHolder(itemView) {
     private val name = itemView.findViewById<TextView>(R.id.text_container_name)
     private val image = itemView.findViewById<TextView>(R.id.text_container_image)
     private val stateChip = itemView.findViewById<Chip>(R.id.chip_container_state)
     fun bind(item: ContainerSummary) {
         val firstName = item.Names?.firstOrNull() ?: item.Id.take(12)
         name.text = firstName
-        image.text = item.Image ?: ""
+        val subtitle = subtitleProvider?.invoke(item)
+        image.text = subtitle ?: prettyImage(item.Image)
         val st = (item.State ?: "").lowercase()
         stateChip.text = st.ifEmpty { "unknown" }
         val color = when (st) {
@@ -42,4 +44,13 @@ class ContainerVH(itemView: View, private val onClick: (ContainerSummary) -> Uni
         stateChip.setTextColor(android.graphics.Color.BLACK)
         itemView.setOnClickListener { onClick(item) }
     }
+}
+
+private fun prettyImage(img: String?): String {
+    if (img.isNullOrBlank()) return ""
+    // Hide SHA256-only identifiers
+    if (img.startsWith("sha256:") || img.matches(Regex("[a-f0-9]{64}"))) return ""
+    // Trim digest suffix if present (name@sha256:...)
+    val at = img.indexOf('@')
+    return if (at > 0) img.substring(0, at) else img
 }

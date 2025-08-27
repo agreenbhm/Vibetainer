@@ -56,21 +56,32 @@ class DashboardActivity : AppCompatActivity() {
         val containersCount = findViewById<TextView>(R.id.text_containers_count)
         val servicesCount = findViewById<TextView>(R.id.text_services_count)
         val stacksCount = findViewById<TextView>(R.id.text_stacks_count)
+        val chipRunning = findViewById<com.google.android.material.chip.Chip>(R.id.chip_running)
+        val chipStopped = findViewById<com.google.android.material.chip.Chip>(R.id.chip_stopped)
 
         fun loadCounts() {
             swipe.isRefreshing = true
             lifecycleScope.launch {
             try {
-                val results = listOf(
-                    async { runCatching { api.listNodes(endpointId).size }.getOrDefault(0) },
-                    async { runCatching { api.listContainers(endpointId, false, null).size }.getOrDefault(0) },
-                    async { runCatching { api.listServices(endpointId).size }.getOrDefault(0) },
-                    async { runCatching { api.listStacks().count { (it.EndpointId ?: -1) == endpointId } }.getOrDefault(0) }
-                ).awaitAll()
-                nodesCount.text = results[0].toString()
-                containersCount.text = results[1].toString()
-                servicesCount.text = results[2].toString()
-                stacksCount.text = results[3].toString()
+                val nodesDeferred = async { runCatching { api.listNodes(endpointId).size }.getOrDefault(0) }
+                val containersDeferred = async { runCatching { api.listContainers(endpointId, true, null) }.getOrDefault(emptyList()) }
+                val servicesDeferred = async { runCatching { api.listServices(endpointId).size }.getOrDefault(0) }
+                val stacksDeferred = async { runCatching { api.listStacks().count { (it.EndpointId ?: -1) == endpointId } }.getOrDefault(0) }
+
+                val totalNodes = nodesDeferred.await()
+                val containersList = containersDeferred.await()
+                val totalServices = servicesDeferred.await()
+                val totalStacks = stacksDeferred.await()
+
+                nodesCount.text = totalNodes.toString()
+                containersCount.text = containersList.size.toString()
+                servicesCount.text = totalServices.toString()
+                stacksCount.text = totalStacks.toString()
+
+                val runningCount = containersList.count { (it.State ?: "").equals("running", ignoreCase = true) }
+                val stoppedCount = containersList.size - runningCount
+                chipRunning.text = "Running $runningCount"
+                chipStopped.text = "Stopped $stoppedCount"
                 val whenTxt = java.text.SimpleDateFormat("HH:mm:ss").format(java.util.Date())
                 val ep = prefs.endpointName()
                 supportActionBar?.title = ep + " • Updated " + whenTxt
@@ -86,8 +97,16 @@ class DashboardActivity : AppCompatActivity() {
         cardNodes.setOnClickListener {
             startActivity(Intent(this, MainActivity::class.java))
         }
-        cardContainers.setOnClickListener {
-            startActivity(Intent(this, ContainersListActivity::class.java))
+        cardContainers.setOnClickListener { startActivity(Intent(this, ContainersListActivity::class.java)) }
+        chipRunning.setOnClickListener {
+            val i = Intent(this, ContainersListActivity::class.java)
+            i.putExtra("state_filter", "running")
+            startActivity(i)
+        }
+        chipStopped.setOnClickListener {
+            val i = Intent(this, ContainersListActivity::class.java)
+            i.putExtra("state_filter", "stopped")
+            startActivity(i)
         }
         cardServices.setOnClickListener {
             startActivity(Intent(this, ServicesListActivity::class.java))

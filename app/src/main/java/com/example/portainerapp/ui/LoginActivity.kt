@@ -12,6 +12,22 @@ import com.example.portainerapp.util.Prefs
 import com.google.android.material.appbar.MaterialToolbar
 
 class LoginActivity : AppCompatActivity() {
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        // Hide items not applicable on login
+        menu.findItem(R.id.action_switch_endpoint)?.isVisible = false
+        menu.findItem(R.id.action_logout)?.isVisible = false
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_settings -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
+            R.id.action_switch_endpoint -> { startActivity(Intent(this, EndpointListActivity::class.java)); true }
+            R.id.action_logout -> { true }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -31,30 +47,31 @@ class LoginActivity : AppCompatActivity() {
         com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(android.R.id.content))
 
         val domainLayout = findViewById<TextInputLayout>(R.id.input_domain_layout)
-        val portLayout = findViewById<TextInputLayout>(R.id.input_port_layout)
+        // Removed port input; URL field includes optional port
         val tokenLayout = findViewById<TextInputLayout>(R.id.input_token_layout)
 
         val domain = findViewById<TextInputEditText>(R.id.input_domain)
-        val port = findViewById<TextInputEditText>(R.id.input_port)
+        // no port field
         val token = findViewById<TextInputEditText>(R.id.input_token)
 
         findViewById<Button>(R.id.button_save).setOnClickListener {
             val d = domain.text?.toString()?.trim().orEmpty()
-            val p = port.text?.toString()?.trim().orEmpty()
+            val p = "" // not used
             val t = token.text?.toString()?.trim().orEmpty()
 
             var valid = true
             domainLayout.error = null
-            portLayout.error = null
+            // no port validation
             tokenLayout.error = null
 
             if (d.isEmpty()) { domainLayout.error = "Required"; valid = false }
-            if (p.isEmpty()) { portLayout.error = "Required"; valid = false }
+            // port not required; included in URL if needed
             if (t.isEmpty()) { tokenLayout.error = "Required"; valid = false }
 
             if (!valid) return@setOnClickListener
 
-            prefs.saveConfig(domain = d, port = p, token = t)
+            // Build normalized base URL from full input
+            prefs.saveBaseUrl(d, t)
 
             startActivity(Intent(this, EndpointListActivity::class.java))
             finish()
