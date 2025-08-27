@@ -24,3 +24,4 @@ The repository does not track the following binaries. Add them manually via the 
 
 - `test.keystore` for signing release builds
 - `gradlew`, `gradlew.bat`, and `gradle/wrapper/` for the Gradle wrapper
+
