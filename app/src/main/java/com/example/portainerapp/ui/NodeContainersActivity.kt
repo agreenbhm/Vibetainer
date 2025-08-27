@@ -6,6 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.chip.Chip
 import com.example.portainerapp.R
@@ -42,7 +43,9 @@ class NodeContainersActivity : AppCompatActivity() {
         val prefs = com.example.portainerapp.util.Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
 
-        val adapter = ContainerAdapter(onClick = { c ->
+        var selectionActive = false
+        lateinit var adapter: ContainerAdapter
+        adapter = ContainerAdapter(onClick = { c ->
             val i = Intent(this, ContainerDetailActivity::class.java)
             i.putExtra(ContainerDetailActivity.EXTRA_ENDPOINT_ID, endpointId)
             i.putExtra(ContainerDetailActivity.EXTRA_CONTAINER_ID, c.Id)
@@ -57,8 +60,65 @@ class NodeContainersActivity : AppCompatActivity() {
                 raw.matches(Regex("[a-f0-9]{64}")) -> ""
                 else -> raw.substringBefore('@')
             }
+        }, onEnterSelection = {
+            selectionActive = true
+            toolbar.menu.clear()
+            toolbar.inflateMenu(R.menu.menu_service_containers_selection)
+            toolbar.subtitle = "Tap to select containers"
+            toolbar.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.action_select_all_stopped -> { adapter.selectAll { (it.State ?: "").lowercase() != "running" }; true }
+                    R.id.action_select_none -> { adapter.clearSelection(); selectionActive = false; toolbar.menu.clear(); toolbar.subtitle = null; true }
+                    R.id.action_remove_containers -> { confirmRemoveSelected(adapter, api, endpointId, agentTarget); true }
+                    else -> false
+                }
+            }
+        }, onSelectionChanged = { count ->
+            toolbar.title = if (count > 0) "$count selected" else "Containers"
+            if (count == 0 && selectionActive) {
+                selectionActive = false
+                toolbar.menu.clear()
+                toolbar.subtitle = null
+                toolbar.title = "Containers"
+            }
         })
         recycler.adapter = adapter
+
+        // Swipe-to-delete for stopped containers
+        val touchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT) {
+            override fun onMove(rv: RecyclerView, vh: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean = false
+            override fun onSwiped(vh: RecyclerView.ViewHolder, direction: Int) {
+                val pos = vh.bindingAdapterPosition
+                if (pos == RecyclerView.NO_POSITION) return
+                val item = adapter.getItem(pos)
+                val state = (item.State ?: "").lowercase()
+                if (state == "running") {
+                    com.google.android.material.snackbar.Snackbar.make(recycler, "Can't remove a running container", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT).show()
+                    adapter.notifyItemUnswiped(pos)
+                    return
+                }
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(this@NodeContainersActivity)
+                    .setTitle("Remove container?")
+                    .setMessage("This will remove the stopped container.")
+                    .setNegativeButton("Cancel") { _, _ -> adapter.notifyItemUnswiped(pos) }
+                    .setPositiveButton("Remove") { _, _ ->
+                        lifecycleScope.launch {
+                            val resp = runCatching { api.containerRemove(endpointId, item.Id, force = 0, v = 1, agentTarget = agentTarget) }.getOrNull()
+                            if (resp != null && resp.isSuccessful) {
+                                com.google.android.material.snackbar.Snackbar.make(recycler, "Removed", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT).show()
+                                swipe.isRefreshing = true
+                                recreate()
+                            } else {
+                                com.google.android.material.snackbar.Snackbar.make(recycler, "Failed to remove", com.google.android.material.snackbar.Snackbar.LENGTH_LONG).show()
+                                adapter.notifyItemUnswiped(pos)
+                            }
+                        }
+                    }
+                    .setOnDismissListener { adapter.notifyItemUnswiped(pos) }
+                    .show()
+            }
+        })
+        touchHelper.attachToRecyclerView(recycler)
 
         var baseForNode: List<com.example.portainerapp.network.ContainerSummary> = emptyList()
         fun displayName(c: com.example.portainerapp.network.ContainerSummary): String =
@@ -115,5 +175,34 @@ class NodeContainersActivity : AppCompatActivity() {
             applyFilter()
         }
         load()
+    }
+
+    private fun confirmRemoveSelected(
+        adapter: ContainerAdapter,
+        api: com.example.portainerapp.network.PortainerService,
+        endpointId: Int,
+        agentTarget: String?
+    ) {
+        val ids = adapter.selectedIds()
+        if (ids.isEmpty()) return
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Remove ${ids.size} container(s)?")
+            .setMessage("Only stopped containers will be removed. Running ones will be skipped.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Remove") { _, _ ->
+                lifecycleScope.launch {
+                    var removed = 0
+                    var skipped = 0
+                    ids.forEach { id ->
+                        val resp = runCatching { api.containerRemove(endpointId, id, force = 0, v = 1, agentTarget = agentTarget) }.getOrNull()
+                        if (resp != null && resp.isSuccessful) removed++ else skipped++
+                    }
+                    com.google.android.material.snackbar.Snackbar.make(findViewById(R.id.recycler_list), "Removed $removed; $skipped skipped", com.google.android.material.snackbar.Snackbar.LENGTH_LONG).show()
+                    adapter.clearSelection()
+                    findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe_list).isRefreshing = true
+                    recreate()
+                }
+            }
+            .show()
     }
 }

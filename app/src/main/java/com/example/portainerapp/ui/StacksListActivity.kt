@@ -11,6 +11,8 @@ import com.example.portainerapp.R
 import com.example.portainerapp.network.PortainerApi
 import com.example.portainerapp.util.Prefs
 import com.google.android.material.appbar.MaterialToolbar
+import com.example.portainerapp.ui.adapters.StacksAdapter
+import com.example.portainerapp.ui.adapters.StackRow
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 
@@ -31,7 +33,14 @@ class StacksListActivity : AppCompatActivity() {
         val recycler = findViewById<RecyclerView>(R.id.recycler_list)
         val swipe = findViewById<SwipeRefreshLayout>(R.id.swipe_list)
         recycler.layoutManager = LinearLayoutManager(this)
-        val adapter = SimpleTextAdapter()
+        val adapter = StacksAdapter(
+            onOpen = { stackName, filter ->
+                val i = Intent(this, StackDetailActivity::class.java)
+                i.putExtra(StackDetailActivity.EXTRA_STACK_NAME, stackName)
+                if (filter != null) i.putExtra(StackDetailActivity.EXTRA_STATE_FILTER, filter)
+                startActivity(i)
+            }
+        )
         recycler.adapter = adapter
 
         val prefs = Prefs(this)
@@ -43,7 +52,16 @@ class StacksListActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 try {
                     val stacks = api.listStacks().filter { (it.EndpointId ?: -1) == endpointId }
-                    adapter.submit(stacks.map { it.Name ?: (it.Id?.toString() ?: "") }.sortedBy { it.lowercase() })
+                    val containers = api.listContainers(endpointId, true, null)
+                    val rows = stacks.map { s ->
+                        val name = s.Name ?: (s.Id?.toString() ?: "")
+                        val stackContainers = containers.filter { it.Labels?.get("com.docker.stack.namespace") == name }
+                        val servicesCount = stackContainers.mapNotNull { it.Labels?.get("com.docker.swarm.service.name") }.toSet().size
+                        val running = stackContainers.count { (it.State ?: "").equals("running", ignoreCase = true) }
+                        val stopped = stackContainers.size - running
+                        StackRow(name, servicesCount, running, stopped)
+                    }.sortedBy { it.name.lowercase() }
+                    adapter.submit(rows)
                 } catch (e: Exception) {
                     Snackbar.make(recycler, "Failed: ${e.message}", Snackbar.LENGTH_LONG).show()
                 } finally {
