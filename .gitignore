@@ -8,3 +8,7 @@ build
 gradlew
 gradlew.bat
 gradle/wrapper/
+
+# Ignore signing keys
+*.keystore
+*.jks
