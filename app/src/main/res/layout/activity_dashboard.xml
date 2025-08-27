@@ -58,12 +58,65 @@
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 
+                <!-- Stacks card -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/card_stacks"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    card_view:cardCornerRadius="12dp"
+                    card_view:cardUseCompatPadding="true">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="16dp">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Stacks"
+                            android:textSize="18sp" />
+                        <TextView
+                            android:id="@+id/text_stacks_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="-" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
+                <!-- Services card -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/card_services"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    card_view:cardCornerRadius="12dp"
+                    card_view:cardUseCompatPadding="true">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="16dp">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Services"
+                            android:textSize="18sp" />
+                        <TextView
+                            android:id="@+id/text_services_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="-" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
                 <!-- Containers card -->
                 <androidx.cardview.widget.CardView
                     android:id="@+id/card_containers"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
                     card_view:cardCornerRadius="12dp"
                     card_view:cardUseCompatPadding="true">
                     <LinearLayout
@@ -107,59 +160,6 @@
                                 android:layout_height="wrap_content"
                                 android:text="Stopped 0" />
                         </com.google.android.material.chip.ChipGroup>
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
-
-                <!-- Services card -->
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/card_services"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    card_view:cardCornerRadius="12dp"
-                    card_view:cardUseCompatPadding="true">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:padding="16dp">
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Services"
-                            android:textSize="18sp" />
-                        <TextView
-                            android:id="@+id/text_services_count"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="-" />
-                    </LinearLayout>
-                </androidx.cardview.widget.CardView>
-
-                <!-- Stacks card -->
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/card_stacks"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    card_view:cardCornerRadius="12dp"
-                    card_view:cardUseCompatPadding="true">
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:padding="16dp">
-                        <TextView
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Stacks"
-                            android:textSize="18sp" />
-                        <TextView
-                            android:id="@+id/text_stacks_count"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="-" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 

@@ -39,6 +39,18 @@
                 android:text="-" />
         </LinearLayout>
 
+        <TextView
+            android:id="@+id/text_service_stack"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="4dp"
+            android:textSize="12sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:text="Stack: example"
+            android:visibility="gone" />
+
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chips_service"
             android:layout_width="match_parent"

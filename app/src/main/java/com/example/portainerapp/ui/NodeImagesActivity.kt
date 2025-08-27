@@ -41,7 +41,7 @@ class NodeImagesActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 try {
                     val images = api.listImages(endpointId, agentTarget)
-                    adapter.submit(images.map { it.RepoTags?.firstOrNull() ?: (it.Id ?: "<none>") })
+                    adapter.submit(images.map { it.RepoTags?.firstOrNull() ?: (it.Id ?: "<none>") }.sortedBy { it.lowercase() })
                 } catch (e: Exception) {
                     Snackbar.make(recycler, "Failed: ${e.message}", Snackbar.LENGTH_LONG).show()
                 } finally {

@@ -46,6 +46,7 @@ class ServicesListActivity : AppCompatActivity() {
                 val i = Intent(this, ServiceContainersActivity::class.java)
                 i.putExtra(ServiceContainersActivity.EXTRA_SERVICE_ID, svc.id)
                 i.putExtra(ServiceContainersActivity.EXTRA_SERVICE_NAME, svc.name)
+                if (!svc.stackName.isNullOrBlank()) i.putExtra(ServiceContainersActivity.EXTRA_STACK_NAME, svc.stackName)
                 startActivity(i)
             },
             onOpenFiltered = { svc, state ->
@@ -53,6 +54,7 @@ class ServicesListActivity : AppCompatActivity() {
                 i.putExtra(ServiceContainersActivity.EXTRA_SERVICE_ID, svc.id)
                 i.putExtra(ServiceContainersActivity.EXTRA_SERVICE_NAME, svc.name)
                 i.putExtra(ServiceContainersActivity.EXTRA_STATE_FILTER, state)
+                if (!svc.stackName.isNullOrBlank()) i.putExtra(ServiceContainersActivity.EXTRA_STACK_NAME, svc.stackName)
                 startActivity(i)
             },
             onEnterSelection = {
@@ -106,8 +108,9 @@ class ServicesListActivity : AppCompatActivity() {
                         val total = belongs.size
                         val running = belongs.count { (it.State ?: "").equals("running", ignoreCase = true) }
                         val stopped = total - running
-                        com.example.portainerapp.ui.adapters.ServiceWithCounts(id, name, total, running, stopped)
-                    }
+                        val stack = belongs.firstOrNull()?.Labels?.get("com.docker.stack.namespace")
+                        com.example.portainerapp.ui.adapters.ServiceWithCounts(id, name, total, running, stopped, stack)
+                    }.sortedBy { it.name.lowercase() }
                     adapter.submit(list)
                 } catch (e: Exception) {
                     Snackbar.make(recycler, "Failed: ${e.message}", Snackbar.LENGTH_LONG).show()

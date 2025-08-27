@@ -40,7 +40,7 @@ class EndpointListActivity : AppCompatActivity() {
         val emptyView = findViewById<android.widget.TextView>(R.id.empty_view)
         lifecycleScope.launch {
             try {
-                val endpoints = api.listEndpoints()
+                val endpoints = api.listEndpoints().sortedBy { it.Name.lowercase() }
                 adapter.submit(endpoints)
                 emptyView.visibility = if (endpoints.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
             } catch (e: Exception) {

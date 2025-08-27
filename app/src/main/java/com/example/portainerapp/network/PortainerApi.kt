@@ -147,6 +147,15 @@ interface PortainerService {
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     )
 
+    @retrofit2.http.DELETE("api/endpoints/{endpointId}/docker/containers/{id}")
+    suspend fun containerRemove(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Query("force") force: Int = 0,
+        @Query("v") v: Int = 0,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): retrofit2.Response<Unit>
+
     // Services inspect/update
     @GET("api/endpoints/{endpointId}/docker/services/{id}")
     suspend fun serviceInspect(

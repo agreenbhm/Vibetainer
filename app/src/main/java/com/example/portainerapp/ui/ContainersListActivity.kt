@@ -42,12 +42,12 @@ class ContainersListActivity : AppCompatActivity() {
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
         val endpointId = prefs.endpointId()
 
-        val adapter = ContainerAdapter({ c ->
+        val adapter = ContainerAdapter(onClick = { c ->
             val i = Intent(this, ContainerDetailActivity::class.java)
             i.putExtra(ContainerDetailActivity.EXTRA_ENDPOINT_ID, endpointId)
             i.putExtra(ContainerDetailActivity.EXTRA_CONTAINER_ID, c.Id)
             startActivity(i)
-        }) { c ->
+        }, subtitleProvider = { c ->
             // Subtitle: cleaned image:tag only (no sha digest)
             val raw = c.Image.orEmpty()
             when {
@@ -56,10 +56,13 @@ class ContainersListActivity : AppCompatActivity() {
                 raw.matches(Regex("[a-f0-9]{64}")) -> ""
                 else -> raw.substringBefore('@')
             }
-        }
+        })
         recycler.adapter = adapter
 
         var allContainers: List<com.example.portainerapp.network.ContainerSummary> = emptyList()
+
+        fun displayName(c: com.example.portainerapp.network.ContainerSummary): String =
+            c.Names?.firstOrNull() ?: c.Id.take(12)
 
         fun applyFilter() {
             val sel = when {
@@ -67,11 +70,12 @@ class ContainersListActivity : AppCompatActivity() {
                 chipStopped.isChecked -> "stopped"
                 else -> null
             }
+            val base = allContainers
             val filtered = when (sel) {
-                "running" -> allContainers.filter { (it.State ?: "").equals("running", ignoreCase = true) }
-                "stopped" -> allContainers.filter { !(it.State ?: "").equals("running", ignoreCase = true) }
-                else -> allContainers
-            }
+                "running" -> base.filter { (it.State ?: "").equals("running", ignoreCase = true) }
+                "stopped" -> base.filter { !(it.State ?: "").equals("running", ignoreCase = true) }
+                else -> base
+            }.sortedBy { displayName(it).lowercase() }
             adapter.submit(filtered)
         }
 

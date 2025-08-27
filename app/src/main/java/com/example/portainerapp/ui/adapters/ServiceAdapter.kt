@@ -13,7 +13,8 @@ data class ServiceWithCounts(
     val name: String,
     val total: Int,
     val running: Int,
-    val stopped: Int
+    val stopped: Int,
+    val stackName: String? = null
 )
 
 class ServiceAdapter(
@@ -51,6 +52,7 @@ class ServiceVH(
 ) : RecyclerView.ViewHolder(itemView) {
     private val name = itemView.findViewById<TextView>(R.id.text_service_name)
     private val total = itemView.findViewById<TextView>(R.id.text_total)
+    private val stack = itemView.findViewById<TextView>(R.id.text_service_stack)
     private val chipRunning = itemView.findViewById<Chip>(R.id.chip_running)
     private val chipStopped = itemView.findViewById<Chip>(R.id.chip_stopped)
     private val checkbox = itemView.findViewById<android.widget.CheckBox>(R.id.check_select)
@@ -58,6 +60,8 @@ class ServiceVH(
     fun bind(item: ServiceWithCounts, selectionEnabled: Boolean, isSelected: Boolean) {
         name.text = item.name
         total.text = item.total.toString()
+        val st = item.stackName
+        if (!st.isNullOrBlank()) { stack.visibility = View.VISIBLE; stack.text = "Stack: $st" } else { stack.visibility = View.GONE }
         chipRunning.text = "Running ${item.running}"
         chipStopped.text = "Stopped ${item.stopped}"
 

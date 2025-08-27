@@ -41,7 +41,7 @@ class NodeVolumesActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 try {
                     val resp = api.listVolumes(endpointId, agentTarget)
-                    adapter.submit((resp.Volumes ?: emptyList()).map { it.Name ?: "<none>" })
+                    adapter.submit((resp.Volumes ?: emptyList()).map { it.Name ?: "<none>" }.sortedBy { it.lowercase() })
                 } catch (e: Exception) {
                     Snackbar.make(recycler, "Failed: ${e.message}", Snackbar.LENGTH_LONG).show()
                 } finally {

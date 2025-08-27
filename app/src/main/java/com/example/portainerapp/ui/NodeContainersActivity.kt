@@ -42,13 +42,13 @@ class NodeContainersActivity : AppCompatActivity() {
         val prefs = com.example.portainerapp.util.Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
 
-        val adapter = ContainerAdapter({ c ->
+        val adapter = ContainerAdapter(onClick = { c ->
             val i = Intent(this, ContainerDetailActivity::class.java)
             i.putExtra(ContainerDetailActivity.EXTRA_ENDPOINT_ID, endpointId)
             i.putExtra(ContainerDetailActivity.EXTRA_CONTAINER_ID, c.Id)
             i.putExtra(ContainerDetailActivity.EXTRA_AGENT_TARGET, agentTarget)
             startActivity(i)
-        }) { c ->
+        }, subtitleProvider = { c ->
             // Subtitle: cleaned image:tag only (no sha digest)
             val raw = c.Image.orEmpty()
             when {
@@ -57,10 +57,12 @@ class NodeContainersActivity : AppCompatActivity() {
                 raw.matches(Regex("[a-f0-9]{64}")) -> ""
                 else -> raw.substringBefore('@')
             }
-        }
+        })
         recycler.adapter = adapter
 
         var baseForNode: List<com.example.portainerapp.network.ContainerSummary> = emptyList()
+        fun displayName(c: com.example.portainerapp.network.ContainerSummary): String =
+            c.Names?.firstOrNull() ?: c.Id.take(12)
 
         fun applyFilter() {
             val sel = when {
@@ -73,7 +75,7 @@ class NodeContainersActivity : AppCompatActivity() {
                 "running" -> filtered.filter { (it.State ?: "").equals("running", ignoreCase = true) }
                 "stopped" -> filtered.filter { !(it.State ?: "").equals("running", ignoreCase = true) }
                 else -> filtered
-            }
+            }.sortedBy { displayName(it).lowercase() }
             adapter.submit(filtered)
         }
 

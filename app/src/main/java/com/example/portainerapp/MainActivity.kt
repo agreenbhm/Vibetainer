@@ -60,7 +60,8 @@ class MainActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 try {
                     val nodes = api.listNodes(endpointId)
-                    adapter.submit(nodes)
+                    val sorted = nodes.sortedBy { (it.Description?.Hostname ?: it.ID).lowercase() }
+                    adapter.submit(sorted)
                     emptyView.visibility = if (nodes.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
                     // After nodes are loaded, fetch running containers and map to nodes (Swarm label)
                     runCatching {

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_select_all_stopped"
+        android:title="Select All Stopped"
+        app:showAsAction="always|withText"
+        android:icon="@android:drawable/ic_menu_set_as" />
+    <item
+        android:id="@+id/action_select_none"
+        android:title="Select None"
+        app:showAsAction="always|withText"
+        android:icon="@android:drawable/ic_menu_close_clear_cancel" />
+    <item
+        android:id="@+id/action_remove_containers"
+        android:title="Remove"
+        app:showAsAction="always|withText"
+        android:icon="@android:drawable/ic_menu_delete" />
+</menu>
+

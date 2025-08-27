@@ -43,7 +43,7 @@ class StacksListActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 try {
                     val stacks = api.listStacks().filter { (it.EndpointId ?: -1) == endpointId }
-                    adapter.submit(stacks.map { it.Name ?: (it.Id?.toString() ?: "") })
+                    adapter.submit(stacks.map { it.Name ?: (it.Id?.toString() ?: "") }.sortedBy { it.lowercase() })
                 } catch (e: Exception) {
                     Snackbar.make(recycler, "Failed: ${e.message}", Snackbar.LENGTH_LONG).show()
                 } finally {
