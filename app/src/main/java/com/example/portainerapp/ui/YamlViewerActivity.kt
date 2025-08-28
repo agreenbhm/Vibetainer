@@ -13,12 +13,20 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.snackbar.Snackbar
 import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.schemes.SchemeDarcula
-// TextMate highlighting temporarily disabled due to API mismatch; using Darcula scheme instead
+import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
+import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver
 import android.view.KeyEvent
+import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
+import io.github.rosemoe.sora.langs.textmate.TextMateLanguage
+import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry
+import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
+import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.eclipse.tm4e.core.registry.IThemeSource
 import org.yaml.snakeyaml.Yaml
+
 
 class YamlViewerActivity : AppCompatActivity() {
     private lateinit var editor: CodeEditor
@@ -51,7 +59,39 @@ class YamlViewerActivity : AppCompatActivity() {
         editor.isWordwrap = prefs.yamlWordWrap()
         editor.setLineNumberEnabled(true)
         editor.nonPrintablePaintingFlags = CodeEditor.FLAG_DRAW_WHITESPACE_LEADING or CodeEditor.FLAG_DRAW_WHITESPACE_IN_SELECTION
-        editor.colorScheme = SchemeDarcula()
+        // No TextMate highlighting for now; keep a simple dark scheme
+        //runCatching { editor.colorScheme = SchemeDarcula() }
+
+        FileProviderRegistry.getInstance().addFileProvider(
+            AssetsFileResolver(
+                applicationContext.assets
+            )
+        )
+
+        val themeRegistry = ThemeRegistry.getInstance()
+        val name = "solarized-dark-color-theme" // name of theme
+        val themeAssetsPath = "textmate/themes/$name.json"
+        themeRegistry.loadTheme(
+            ThemeModel(
+                IThemeSource.fromInputStream(
+                    FileProviderRegistry.getInstance().tryGetInputStream(themeAssetsPath),
+                    themeAssetsPath,
+                    null
+                ),
+                name
+            ).apply {
+                // If the theme is dark
+                // isDark = true
+            }
+        )
+        ThemeRegistry.getInstance().setTheme(name)
+        GrammarRegistry.getInstance().loadGrammars("textmate/languages.json")
+
+        editor.colorScheme = TextMateColorScheme.create(ThemeRegistry.getInstance())
+        val languageScopeName = "source.yaml"
+        val language = TextMateLanguage.create(languageScopeName, true)
+        editor.setEditorLanguage(language)
+
         setEditing(false)
         // Remove previous auto-dash behavior per user request
 
@@ -71,6 +111,8 @@ class YamlViewerActivity : AppCompatActivity() {
             }
         })
     }
+
+    // No TextMate setup; keep editor simple
 
     private fun setEditing(enable: Boolean) {
         editing = enable

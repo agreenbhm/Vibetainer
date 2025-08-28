@@ -21,4 +21,5 @@
         android:title="Word Wrap"
         android:checkable="true"
         android:showAsAction="never" />
+
 </menu>

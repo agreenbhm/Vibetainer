@@ -73,7 +73,6 @@ dependencies {
     // YAML editor & validation
     // Sora Editor: modern code editor with auto-indent, line numbers, etc.
     implementation("io.github.Rosemoe.sora-editor:editor:0.22.1")
-    // TextMate-based highlighting for YAML
     implementation("io.github.Rosemoe.sora-editor:language-textmate:0.22.1")
 
     // SnakeYAML for YAML parsing/validation/formatting
