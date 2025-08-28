@@ -41,6 +41,7 @@ class YamlViewerActivity : AppCompatActivity() {
     private var themeRegistry = ThemeRegistry.getInstance()
     private var darkName = "solarized-dark-color-theme"
     private var lightName = "solarized-light-color-theme"
+    private var backCallback: OnBackPressedCallback? = null
 
 // Replace your entire onCreate method with this:
 
@@ -77,8 +78,8 @@ class YamlViewerActivity : AppCompatActivity() {
             initializeTextMateAndSetContent()
         }
 
-        // Set up back press handler
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+        // Set up back press handler (only enabled when editing)
+        backCallback = object : OnBackPressedCallback(false) {
             override fun handleOnBackPressed() {
                 val hasChanges = editor.text.toString() != original
                 if (editing && hasChanges) {
@@ -92,7 +93,8 @@ class YamlViewerActivity : AppCompatActivity() {
                     finish()
                 }
             }
-        })
+        }
+        backCallback?.let { onBackPressedDispatcher.addCallback(this, it) }
     }
 
     private suspend fun initializeTextMateAndSetContent() {
@@ -219,6 +221,8 @@ class YamlViewerActivity : AppCompatActivity() {
         editing = enable
         editor.isEditable = enable
         supportActionBar?.title = if (enable) "Edit YAML" else originalTitle
+        // Enable custom back only while editing to allow predictive back otherwise
+        backCallback?.isEnabled = enable
         invalidateOptionsMenu()
     }
 

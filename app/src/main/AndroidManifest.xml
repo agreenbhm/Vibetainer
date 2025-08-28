@@ -8,6 +8,7 @@
         android:allowBackup="true"
         android:usesCleartextTraffic="true"
         android:label="Vibetainer"
+        android:enableOnBackInvokedCallback="true"
         android:supportsRtl="true"
         android:theme="@style/Theme.Portainer">
         <activity
