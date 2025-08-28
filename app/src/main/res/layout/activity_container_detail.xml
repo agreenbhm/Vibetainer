@@ -42,6 +42,13 @@
             android:text="image" />
 
         <TextView
+            android:id="@+id/text_container_affinity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:layout_marginTop="4dp" />
+
+        <TextView
             android:id="@+id/text_container_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

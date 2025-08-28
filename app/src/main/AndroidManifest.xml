@@ -1,13 +1,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.portainerapp">
+    package="com.agreenbhm.vibetainer">
 
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:name=".PortainerApp"
+        android:name=".VibetainerApp"
         android:allowBackup="true"
         android:usesCleartextTraffic="true"
-        android:label="PortainerApp"
+        android:label="Vibetainer"
         android:supportsRtl="true"
         android:theme="@style/Theme.Portainer">
         <activity

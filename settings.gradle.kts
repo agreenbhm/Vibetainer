@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PortainerApp"
+rootProject.name = "Vibetainer"
 include(":app")
