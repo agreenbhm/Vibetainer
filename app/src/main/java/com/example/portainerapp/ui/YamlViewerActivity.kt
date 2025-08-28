@@ -1,6 +1,8 @@
 package com.example.portainerapp.ui
 
 import android.os.Bundle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import android.view.Menu
 import android.view.MenuItem
 import androidx.activity.OnBackPressedCallback
@@ -15,7 +17,6 @@ import io.github.rosemoe.sora.widget.CodeEditor
 import io.github.rosemoe.sora.widget.schemes.SchemeDarcula
 import io.github.rosemoe.sora.langs.textmate.registry.FileProviderRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolver
-import android.view.KeyEvent
 import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
 import io.github.rosemoe.sora.langs.textmate.TextMateLanguage
 import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry
@@ -35,7 +36,13 @@ class YamlViewerActivity : AppCompatActivity() {
     private var stackId: Int = -1
     private var endpointId: Int = -1
     private var originalTitle: String = "YAML"
+    private var useLightTheme: Boolean = false
     // No-op state; reserved for future editor event-based handling
+    private var themeRegistry = ThemeRegistry.getInstance()
+    private var darkName = "solarized-dark-color-theme"
+    private var lightName = "solarized-light-color-theme"
+
+// Replace your entire onCreate method with this:
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,56 +52,32 @@ class YamlViewerActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
+
         val title = intent.getStringExtra(EXTRA_TITLE) ?: "YAML"
         originalTitle = title
         supportActionBar?.title = title
         com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.editor_yaml))
 
-        editor = findViewById(R.id.editor_yaml)
+        // Get intent data
         original = intent.getStringExtra(EXTRA_CONTENT) ?: ""
         stackId = intent.getIntExtra(EXTRA_STACK_ID, -1)
         endpointId = intent.getIntExtra(EXTRA_ENDPOINT_ID, -1)
-        editor.setText(original)
         val prefs = com.example.portainerapp.util.Prefs(this)
+        useLightTheme = prefs.yamlLightTheme()
+        editor = findViewById(R.id.editor_yaml)
         editor.isWordwrap = prefs.yamlWordWrap()
         editor.setLineNumberEnabled(true)
         editor.nonPrintablePaintingFlags = CodeEditor.FLAG_DRAW_WHITESPACE_LEADING or CodeEditor.FLAG_DRAW_WHITESPACE_IN_SELECTION
-        // No TextMate highlighting for now; keep a simple dark scheme
-        //runCatching { editor.colorScheme = SchemeDarcula() }
 
-        FileProviderRegistry.getInstance().addFileProvider(
-            AssetsFileResolver(
-                applicationContext.assets
-            )
-        )
+        // Set a temporary empty text first
+        editor.setText("")
 
-        val themeRegistry = ThemeRegistry.getInstance()
-        val name = "solarized-dark-color-theme" // name of theme
-        val themeAssetsPath = "textmate/themes/$name.json"
-        themeRegistry.loadTheme(
-            ThemeModel(
-                IThemeSource.fromInputStream(
-                    FileProviderRegistry.getInstance().tryGetInputStream(themeAssetsPath),
-                    themeAssetsPath,
-                    null
-                ),
-                name
-            ).apply {
-                // If the theme is dark
-                // isDark = true
-            }
-        )
-        ThemeRegistry.getInstance().setTheme(name)
-        GrammarRegistry.getInstance().loadGrammars("textmate/languages.json")
+        // Initialize TextMate in a coroutine to handle async operations properly
+        lifecycleScope.launch {
+            initializeTextMateAndSetContent()
+        }
 
-        editor.colorScheme = TextMateColorScheme.create(ThemeRegistry.getInstance())
-        val languageScopeName = "source.yaml"
-        val language = TextMateLanguage.create(languageScopeName, true)
-        editor.setEditorLanguage(language)
-
-        setEditing(false)
-        // Remove previous auto-dash behavior per user request
-
+        // Set up back press handler
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val hasChanges = editor.text.toString() != original
@@ -110,6 +93,124 @@ class YamlViewerActivity : AppCompatActivity() {
                 }
             }
         })
+    }
+
+    private suspend fun initializeTextMateAndSetContent() {
+        try {
+            withContext(Dispatchers.Main) {
+                // Add file provider
+                FileProviderRegistry.getInstance().addFileProvider(
+                    AssetsFileResolver(applicationContext.assets)
+                )
+
+                // Load grammars first
+                GrammarRegistry.getInstance().loadGrammars("textmate/languages.json")
+
+                // Small delay to ensure grammar loading completes
+                delay(50)
+
+                // Load themes
+                val themeAssetsPath = "textmate/themes/"
+
+                themeRegistry.loadTheme(
+                    ThemeModel(
+                        IThemeSource.fromInputStream(
+                            FileProviderRegistry.getInstance().tryGetInputStream(themeAssetsPath + darkName + ".json"),
+                            themeAssetsPath + darkName + ".json",
+                            null
+                        ),
+                        darkName
+                    ).apply {}
+                )
+
+                themeRegistry.loadTheme(
+                    ThemeModel(
+                        IThemeSource.fromInputStream(
+                            FileProviderRegistry.getInstance().tryGetInputStream(themeAssetsPath + lightName + ".json"),
+                            themeAssetsPath + lightName + ".json",
+                            null
+                        ),
+                        lightName
+                    ).apply { }
+                )
+
+                // Another small delay for theme loading
+                delay(50)
+
+                // Set the theme first
+                themeRegistry.setTheme(if (useLightTheme) lightName else darkName)
+
+                // Apply color scheme
+                val colorScheme = TextMateColorScheme.create(themeRegistry)
+                editor.setColorScheme(colorScheme)
+
+                // Set language
+                val languageScopeName = "source.yaml"
+                val language = TextMateLanguage.create(languageScopeName, true)
+                editor.setEditorLanguage(language)
+
+                // Final delay before setting text to ensure everything is ready
+                delay(100)
+
+                // Now set the actual content
+                editor.setText(original)
+
+                // Force analysis and refresh
+                editor.rerunAnalysis()
+                editor.invalidate()
+
+                setEditing(false)
+
+                android.util.Log.d("YamlViewer", "TextMate initialization completed successfully")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("YamlViewer", "Failed to initialize TextMate", e)
+            withContext(Dispatchers.Main) {
+                // Fallback to simple setup
+                editor.setColorScheme(SchemeDarcula())
+                editor.setText(original)
+                setEditing(false)
+            }
+        }
+    }
+
+    // Also update your applyEditorTheme method:
+    private fun applyEditorTheme() {
+        lifecycleScope.launch {
+            withContext(Dispatchers.Main) {
+                runCatching {
+                    // Get current text to preserve it
+                    val currentText = editor.text.toString()
+
+                    // Set the theme
+                    themeRegistry.setTheme(if (useLightTheme) lightName else darkName)
+
+                    // Apply the color scheme
+                    val colorScheme = TextMateColorScheme.create(themeRegistry)
+                    editor.setColorScheme(colorScheme)
+
+                    // Small delay to ensure theme application
+                    delay(50)
+
+                    // Reset text to trigger re-highlighting
+                    if (currentText.isNotEmpty()) {
+                        editor.setText("")
+                        delay(50)
+                        editor.setText(currentText)
+                    }
+
+                    // Force refresh
+                    editor.rerunAnalysis()
+                    editor.invalidate()
+
+                }.onFailure { e ->
+                    android.util.Log.e("YamlViewer", "TM theme apply failed", e)
+                    editor.setColorScheme(SchemeDarcula())
+                    editor.rerunAnalysis()
+                    editor.invalidate()
+                }
+            }
+        }
     }
 
     // No TextMate setup; keep editor simple
@@ -131,6 +232,7 @@ class YamlViewerActivity : AppCompatActivity() {
         menu.findItem(R.id.action_save)?.isVisible = editing
         menu.findItem(R.id.action_cancel)?.isVisible = editing
         menu.findItem(R.id.action_toggle_wrap)?.isChecked = editor.isWordwrap
+        menu.findItem(R.id.action_toggle_light_theme)?.isChecked = useLightTheme
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -146,9 +248,17 @@ class YamlViewerActivity : AppCompatActivity() {
                 invalidateOptionsMenu()
                 true
             }
+            R.id.action_toggle_light_theme -> {
+                useLightTheme = !useLightTheme
+                com.example.portainerapp.util.Prefs(this).setYamlLightTheme(useLightTheme)
+                applyEditorTheme()
+                invalidateOptionsMenu()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
+
 
     private fun showSuggestions() {
         if (!editing) { setEditing(true) }

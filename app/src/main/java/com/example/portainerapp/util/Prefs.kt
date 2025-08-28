@@ -74,6 +74,10 @@ class Prefs(context: Context) {
     fun yamlWordWrap(): Boolean = prefs.getBoolean(KEY_YAML_WORD_WRAP, true)
     fun setYamlWordWrap(v: Boolean) { prefs.edit().putBoolean(KEY_YAML_WORD_WRAP, v).apply() }
 
+    // YAML editor theme preference (true = light theme)
+    fun yamlLightTheme(): Boolean = prefs.getBoolean(KEY_YAML_LIGHT_THEME, false)
+    fun setYamlLightTheme(v: Boolean) { prefs.edit().putBoolean(KEY_YAML_LIGHT_THEME, v).apply() }
+
 
     fun getAxisMax(endpointId: Int, nodeId: String): Float {
         val key = axisKey(endpointId, nodeId)
@@ -139,5 +143,6 @@ class Prefs(context: Context) {
         private const val KEY_LOGS_TIMESTAMPS = "logs_timestamps"
         private const val KEY_LOGS_AUTO_REFRESH = "logs_auto_refresh"
         private const val KEY_YAML_WORD_WRAP = "yaml_word_wrap"
+        private const val KEY_YAML_LIGHT_THEME = "yaml_light_theme"
     }
 }
