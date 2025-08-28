@@ -26,11 +26,51 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class StackDetailActivity : AppCompatActivity() {
+    private lateinit var currentStackName: String
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_stack_detail, menu)
+        return true
+    }
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_view_yaml -> { fetchYamlAndOpen(); true }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun fetchYamlAndOpen() {
+        val recycler = findViewById<RecyclerView>(R.id.recycler_stack_containers)
+        val prefs = com.example.portainerapp.util.Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        val endpointId = prefs.endpointId()
+        val stackName = currentStackName
+        lifecycleScope.launch {
+            try {
+                val stacks = withContext(Dispatchers.IO) { api.listStacks() }
+                val id = stacks.firstOrNull { (it.Name ?: "") == stackName && (it.EndpointId ?: -1) == endpointId }?.Id
+                if (id == null) {
+                    Snackbar.make(recycler, "Stack not found", Snackbar.LENGTH_LONG).show()
+                    return@launch
+                }
+                val resp = withContext(Dispatchers.IO) { api.getStackFile(id) }
+                val content = resp.StackFileContent ?: ""
+                val i = Intent(this@StackDetailActivity, YamlViewerActivity::class.java)
+                i.putExtra(YamlViewerActivity.EXTRA_TITLE, "$stackName • YAML")
+                i.putExtra(YamlViewerActivity.EXTRA_CONTENT, content)
+                i.putExtra(YamlViewerActivity.EXTRA_STACK_ID, id)
+                i.putExtra(YamlViewerActivity.EXTRA_ENDPOINT_ID, endpointId)
+                startActivity(i)
+            } catch (e: Exception) {
+                Snackbar.make(recycler, "Failed to load YAML: ${e.message}", Snackbar.LENGTH_LONG).show()
+            }
+        }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_stack_detail)
 
         val stackName = intent.getStringExtra(EXTRA_STACK_NAME) ?: return finish()
+        currentStackName = stackName
         val initialFilter = intent.getStringExtra(EXTRA_STATE_FILTER)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_stack)
@@ -46,6 +86,9 @@ class StackDetailActivity : AppCompatActivity() {
         val chipStopped: Chip = findViewById(R.id.chip_filter_stopped)
         val servicesRecycler = findViewById<RecyclerView>(R.id.recycler_stack_services)
         val recycler = findViewById<RecyclerView>(R.id.recycler_stack_containers)
+        // Disable nested scrolling so the whole page scrolls as one
+        servicesRecycler.isNestedScrollingEnabled = false
+        recycler.isNestedScrollingEnabled = false
         recycler.layoutManager = LinearLayoutManager(this)
 
         val prefs = com.example.portainerapp.util.Prefs(this)
@@ -192,6 +235,8 @@ class StackDetailActivity : AppCompatActivity() {
                 }
             }
         }
+
+        // YAML handling implemented via onOptionsItemSelected
 
         when (initialFilter?.lowercase()) {
             "running" -> chipRunning.isChecked = true

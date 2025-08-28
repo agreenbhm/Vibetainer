@@ -65,5 +65,8 @@
         <activity
             android:name=".ui.StackDetailActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.YamlViewerActivity"
+            android:exported="false" />
     </application>
 </manifest>

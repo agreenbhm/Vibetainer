@@ -16,6 +16,8 @@ import com.example.portainerapp.network.PortainerApi
 import com.example.portainerapp.util.Prefs
 import com.google.android.material.appbar.MaterialToolbar
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
  
 
 class ContainerDetailActivity : AppCompatActivity() {
@@ -103,20 +105,20 @@ class ContainerDetailActivity : AppCompatActivity() {
         fun refresh(reset: Boolean = false) {
             lifecycleScope.launch {
                 try {
-                                        // Resolve agent target as node hostname if not provided
+                    // Resolve agent target as node hostname if not provided
                     if (agentTarget.isNullOrBlank()) {
                         runCatching {
-                            val containers = api.listContainers(endpointId, true, null)
+                            val containers = withContext(Dispatchers.IO) { api.listContainers(endpointId, true, null) }
                             val match = containers.firstOrNull { it.Id.startsWith(containerId) or containerId.startsWith(it.Id) or (it.Id == containerId) }
                             val nodeId = match?.Labels?.get("com.docker.swarm.node.id")
                             if (!nodeId.isNullOrBlank()) {
-                                val nodes = api.listNodes(endpointId)
+                                val nodes = withContext(Dispatchers.IO) { api.listNodes(endpointId) }
                                 val node = nodes.firstOrNull { it.ID == nodeId }
                                 agentTarget = node?.Description?.Hostname ?: agentTarget
                             }
                         }
                     }
-                    val insp = api.containerInspect(endpointId, containerId, agentTarget)
+                    val insp = withContext(Dispatchers.IO) { api.containerInspect(endpointId, containerId, agentTarget) }
                     val nm = insp.Name?.removePrefix("/") ?: containerId.take(12)
                     toolbar.title = nm
                     txtName.text = nm
@@ -126,19 +128,21 @@ class ContainerDetailActivity : AppCompatActivity() {
 
                     // Fetch a snapshot of recent logs
                     val tail = tails[spinnerTail.selectedItemPosition]
-                    val logsBody = runCatching {
-                        api.containerLogs(
-                            endpointId = endpointId,
-                            id = containerId,
-                            stdout = 1,
-                            stderr = 1,
-                            tail = tail,
-                            timestamps = if (switchTimestamps.isChecked) 1 else 0,
-                            follow = 0,
-                            agentTarget = agentTarget
-                        )
-                    }.getOrNull()
-                    val bytes = logsBody?.bytes()
+                    val logsBody = withContext(Dispatchers.IO) {
+                        runCatching {
+                            api.containerLogs(
+                                endpointId = endpointId,
+                                id = containerId,
+                                stdout = 1,
+                                stderr = 1,
+                                tail = tail,
+                                timestamps = if (switchTimestamps.isChecked) 1 else 0,
+                                follow = 0,
+                                agentTarget = agentTarget
+                            )
+                        }.getOrNull()
+                    }
+                    val bytes = withContext(Dispatchers.IO) { logsBody?.bytes() }
                     val snapshot = if (bytes != null) demuxDockerLogs(bytes) else ""
                     // Snapshot model: replace content each refresh to avoid duplicates
                     txtLogs.text = snapshot
@@ -155,7 +159,8 @@ class ContainerDetailActivity : AppCompatActivity() {
                         vto.addOnPreDrawListener(listener)
                     }
                 } catch (e: Exception) {
-                    txtStatus.text = "Error: ${'$'}{e.message}"
+                    val msg = e.message ?: e.javaClass.simpleName
+                    txtStatus.text = "Error: ${msg}"
                 }
             }
         }
@@ -163,10 +168,16 @@ class ContainerDetailActivity : AppCompatActivity() {
         
 
         btnStart.setOnClickListener {
-            lifecycleScope.launch { runCatching { api.containerStart(endpointId, containerId, agentTarget) }; refresh() }
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { runCatching { api.containerStart(endpointId, containerId, agentTarget) } }
+                refresh()
+            }
         }
         btnStop.setOnClickListener {
-            lifecycleScope.launch { runCatching { api.containerStop(endpointId, containerId, agentTarget) }; refresh() }
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) { runCatching { api.containerStop(endpointId, containerId, agentTarget) } }
+                refresh()
+            }
         }
 
         refresh()

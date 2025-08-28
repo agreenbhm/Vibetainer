@@ -26,6 +26,8 @@ android {
         // Use Java 17 toolchain
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Required by some libraries (e.g., Sora TextMate) on older Android APIs
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -67,4 +69,16 @@ dependencies {
 
     // Charts
     implementation("com.github.PhilJay:MPAndroidChart:3.1.0")
+
+    // YAML editor & validation
+    // Sora Editor: modern code editor with auto-indent, line numbers, etc.
+    implementation("io.github.Rosemoe.sora-editor:editor:0.22.1")
+    // TextMate-based highlighting for YAML
+    implementation("io.github.Rosemoe.sora-editor:language-textmate:0.22.1")
+
+    // SnakeYAML for YAML parsing/validation/formatting
+    implementation("org.yaml:snakeyaml:2.2")
+
+    // Core library desugaring for Java 8+ APIs on older Android devices
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 }

@@ -14,6 +14,8 @@ import retrofit2.http.Header
 import retrofit2.http.Body
 import okhttp3.ResponseBody
 import retrofit2.http.Streaming
+import retrofit2.http.PUT
+import com.google.gson.annotations.SerializedName
 
 // Data models (minimal for nodes)
 data class DockerNode(
@@ -85,6 +87,18 @@ interface PortainerService {
 
     @GET("api/stacks")
     suspend fun listStacks(): List<Stack>
+
+    @GET("api/stacks/{id}/file")
+    suspend fun getStackFile(
+        @Path("id") id: Int
+    ): StackFileResponse
+
+    @PUT("api/stacks/{id}")
+    suspend fun updateStack(
+        @Path("id") id: Int,
+        @Query("endpointId") endpointId: Int,
+        @Body body: StackUpdateRequest
+    ): retrofit2.Response<Unit>
 
     @GET("api/endpoints/{endpointId}/docker/containers/json")
     suspend fun listContainers(
@@ -259,6 +273,15 @@ data class Stack(
     val Id: Int?,
     val Name: String?,
     val EndpointId: Int?
+)
+
+data class StackFileResponse(
+    val StackFileContent: String?
+)
+
+data class StackUpdateRequest(
+    @SerializedName("StackFileContent") val StackFileContent: String,
+    @SerializedName("Prune") val Prune: Boolean = false
 )
 
 object PortainerApi {

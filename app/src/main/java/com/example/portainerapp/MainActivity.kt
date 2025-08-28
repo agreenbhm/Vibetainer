@@ -66,16 +66,20 @@ class MainActivity : AppCompatActivity() {
                     // After nodes are loaded, fetch running containers and map to nodes (Swarm label)
                     runCatching {
                         val containers = api.listContainers(endpointId, true)
-                        val running = containers.filter { (it.State ?: "").equals("running", ignoreCase = true) }
-                        val counts = mutableMapOf<String, Int>()
-                        running.forEach { c: ContainerSummary ->
-                            val nodeId = c.Labels?.get("com.docker.swarm.node.id")
-                            if (nodeId != null) counts[nodeId] = (counts[nodeId] ?: 0) + 1
+                        val hostMap = nodes.associate { it.ID to (it.Description?.Hostname ?: it.ID) }
+                        val totalCounts = mutableMapOf<String, Int>()
+                        val runningCounts = mutableMapOf<String, Int>()
+                        containers.forEach { c: ContainerSummary ->
+                            val nodeId = c.Labels?.get("com.docker.swarm.node.id") ?: return@forEach
+                            totalCounts[nodeId] = (totalCounts[nodeId] ?: 0) + 1
+                            if ((c.State ?: "").equals("running", ignoreCase = true)) {
+                                runningCounts[nodeId] = (runningCounts[nodeId] ?: 0) + 1
+                            }
                         }
-                        adapter.submitRunningCounts(counts)
-                        val total = running.size
-                        val sumCounts = counts.values.sum()
-                        if ((counts.isEmpty() || sumCounts == 0) && Prefs(this@MainActivity).showHeaderTotal()) {
+                        adapter.submitCounts(runningCounts, totalCounts, endpointId, hostMap)
+                        val total = containers.count { (it.State ?: "").equals("running", ignoreCase = true) }
+                        val sumCounts = runningCounts.values.sum()
+                        if ((runningCounts.isEmpty() || sumCounts == 0) && Prefs(this@MainActivity).showHeaderTotal()) {
                             totalChip.text = "$total running"
                             totalChip.visibility = if (total > 0) android.view.View.VISIBLE else android.view.View.GONE
                         } else {
@@ -105,22 +109,59 @@ class MainActivity : AppCompatActivity() {
 class NodesAdapter(private val onClick: (DockerNode) -> Unit) : RecyclerView.Adapter<NodeVH>() {
     private val items = mutableListOf<DockerNode>()
     private val runningCounts = mutableMapOf<String, Int>()
+    private val totalCounts = mutableMapOf<String, Int>()
+    private var endpointId: Int = -1
+    private var nodeHostById: Map<String, String> = emptyMap()
     fun submit(list: List<DockerNode>) { items.clear(); items.addAll(list); notifyDataSetChanged() }
-    fun submitRunningCounts(map: Map<String, Int>) { runningCounts.clear(); runningCounts.putAll(map); notifyDataSetChanged() }
+    fun submitCounts(running: Map<String, Int>, total: Map<String, Int>, endpointId: Int, hostMap: Map<String, String>) {
+        runningCounts.clear(); runningCounts.putAll(running)
+        totalCounts.clear(); totalCounts.putAll(total)
+        this.endpointId = endpointId
+        this.nodeHostById = hostMap
+        notifyDataSetChanged()
+    }
     override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): NodeVH {
         val view = android.view.LayoutInflater.from(parent.context).inflate(R.layout.item_node, parent, false)
         return NodeVH(view, onClick)
     }
     override fun getItemCount(): Int = items.size
-    override fun onBindViewHolder(holder: NodeVH, position: Int) = holder.bind(items[position], runningCounts[items[position].ID] ?: 0)
+    override fun onBindViewHolder(holder: NodeVH, position: Int) {
+        val item = items[position]
+        val running = runningCounts[item.ID] ?: 0
+        val total = totalCounts[item.ID] ?: 0
+        val agentTarget = nodeHostById[item.ID]
+        holder.bind(item, running, total, endpointId, agentTarget)
+    }
 }
 
 class NodeVH(itemView: android.view.View, private val onClick: (DockerNode) -> Unit) : RecyclerView.ViewHolder(itemView) {
     private val title = itemView.findViewById<android.widget.TextView>(R.id.text_node)
-    private val chip = itemView.findViewById<com.google.android.material.chip.Chip>(R.id.chip_status)
-    fun bind(item: DockerNode, running: Int) {
+    private val textTotal = itemView.findViewById<android.widget.TextView>(R.id.text_total)
+    private val chipRunning = itemView.findViewById<com.google.android.material.chip.Chip>(R.id.chip_running)
+    private val chipStopped = itemView.findViewById<com.google.android.material.chip.Chip>(R.id.chip_stopped)
+    fun bind(item: DockerNode, running: Int, total: Int, endpointId: Int, agentTarget: String?) {
+        val ctx = itemView.context
         title.text = item.Description?.Hostname ?: item.ID
-        chip.text = "$running running"
+        textTotal.text = total.toString()
+        val stopped = (total - running).coerceAtLeast(0)
+        chipRunning.text = "Running $running"
+        chipStopped.text = "Stopped $stopped"
         itemView.setOnClickListener { onClick(item) }
+        chipRunning.setOnClickListener {
+            val i = Intent(ctx, com.example.portainerapp.ui.NodeContainersActivity::class.java)
+            i.putExtra("endpoint_id", endpointId)
+            i.putExtra("agent_target", agentTarget)
+            i.putExtra("node_id", item.ID)
+            i.putExtra("state_filter", "running")
+            ctx.startActivity(i)
+        }
+        chipStopped.setOnClickListener {
+            val i = Intent(ctx, com.example.portainerapp.ui.NodeContainersActivity::class.java)
+            i.putExtra("endpoint_id", endpointId)
+            i.putExtra("agent_target", agentTarget)
+            i.putExtra("node_id", item.ID)
+            i.putExtra("state_filter", "stopped")
+            ctx.startActivity(i)
+        }
     }
 }

@@ -1,0 +1,43 @@
+{
+  "scopeName": "source.yaml",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#key" },
+    { "include": "#string" },
+    { "include": "#number" },
+    { "include": "#boolean" },
+    { "include": "#anchor" },
+    { "include": "#alias" }
+  ],
+  "repository": {
+    "comment": {
+      "patterns": [ { "name": "comment.line.number-sign.yaml", "match": "#.*$" } ]
+    },
+    "key": {
+      "patterns": [ { "name": "entity.name.tag.yaml", "match": "^(\t|\s)*[\"'A-Za-z0-9_\-\.]+(?=\s*:)" } ]
+    },
+    "string": {
+      "patterns": [
+        { "name": "string.quoted.double.yaml", "begin": "\"", "end": "\"" },
+        { "name": "string.quoted.single.yaml", "begin": "'", "end": "'" }
+      ]
+    },
+    "number": {
+      "patterns": [ { "name": "constant.numeric.yaml", "match": "(?x)
+        (?:^|\s)(?:
+          0x[0-9A-Fa-f]+ | 0o[0-7]+ | 0b[01]+ |
+          -?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?
+        )(?=\s|$)" } ]
+    },
+    "boolean": {
+      "patterns": [ { "name": "constant.language.boolean.yaml", "match": "(?i)\b(?:true|false|null|yes|no|on|off)\b" } ]
+    },
+    "anchor": {
+      "patterns": [ { "name": "entity.other.attribute-name.anchor.yaml", "match": "&[A-Za-z0-9_\-]+" } ]
+    },
+    "alias": {
+      "patterns": [ { "name": "variable.other.alias.yaml", "match": "\*[A-Za-z0-9_\-]+" } ]
+    }
+  }
+}
+

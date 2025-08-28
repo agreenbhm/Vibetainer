@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="compose_suggestions">
+        <item>version: "3.9"</item>
+        <item>services:</item>
+        <item>volumes:</item>
+        <item>networks:</item>
+        <item>configs:</item>
+        <item>secrets:</item>
+        <item>services:
+  app:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+    environment:
+      - KEY=VALUE
+    depends_on:
+      - db</item>
+        <item>services:
+  app:
+    build: .
+    command: ["sh", "-c", "echo hello"]
+    volumes:
+      - ./:/app
+    networks:
+      - default</item>
+        <item>deploy:
+  replicas: 1
+  restart_policy:
+    condition: on-failure</item>
+        <item>ports:
+  - "8080:80"</item>
+        <item>environment:
+  - KEY=VALUE</item>
+        <item>volumes:
+  - name:/path</item>
+        <item>depends_on:
+  - service_name</item>
+    </string-array>
+</resources>
