@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:popupTheme="@style/ThemeOverlay.Material3"
-        android:title="Stack" />
+        android:title="@string/stack" />
 
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/chip_group_state"
@@ -29,7 +29,7 @@
             style="@style/Widget.Material3.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="All"
+            android:text="@string/all"
             android:checkable="true"
             android:checked="true" />
 
@@ -38,7 +38,7 @@
             style="@style/Widget.Material3.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Running"
+            android:text="@string/running"
             android:checkable="true" />
 
         <com.google.android.material.chip.Chip
@@ -46,9 +46,40 @@
             style="@style/Widget.Material3.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Stopped"
+            android:text="@string/stopped"
             android:checkable="true" />
     </com.google.android.material.chip.ChipGroup>
+
+    <LinearLayout
+        android:id="@+id/stack_actions_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_stack_start"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/start_stack" />
+
+        <Space
+            android:layout_width="12dp"
+            android:layout_height="wrap_content" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_stack_stop"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/stop_stack" />
+    </LinearLayout>
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_stack"
@@ -68,7 +99,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Services"
+                    android:text="@string/services"
                     android:textStyle="bold"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
@@ -85,7 +116,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Containers"
+                    android:text="@string/containers"
                     android:textStyle="bold"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"

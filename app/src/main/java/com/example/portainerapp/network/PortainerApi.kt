@@ -16,6 +16,7 @@ import okhttp3.ResponseBody
 import retrofit2.http.Streaming
 import retrofit2.http.PUT
 import com.google.gson.annotations.SerializedName
+import java.util.concurrent.TimeUnit
 
 // Data models (minimal for nodes)
 data class DockerNode(
@@ -98,6 +99,19 @@ interface PortainerService {
         @Path("id") id: Int,
         @Query("endpointId") endpointId: Int,
         @Body body: StackUpdateRequest
+    ): retrofit2.Response<Unit>
+
+    // Stack lifecycle
+    @POST("api/stacks/{id}/start")
+    suspend fun stackStart(
+        @Path("id") id: Int,
+        @Query("endpointId") endpointId: Int
+    ): retrofit2.Response<Unit>
+
+    @POST("api/stacks/{id}/stop")
+    suspend fun stackStop(
+        @Path("id") id: Int,
+        @Query("endpointId") endpointId: Int
     ): retrofit2.Response<Unit>
 
     @GET("api/endpoints/{endpointId}/docker/containers/json")
@@ -298,6 +312,9 @@ object PortainerApi {
         }
 
         val client = OkHttpClient.Builder()
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .build()
@@ -326,6 +343,9 @@ object PortainerApi {
         }
 
         val builder = OkHttpClient.Builder()
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
 

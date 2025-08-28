@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="containers">Containers</string>
+    <string name="stack">Stack</string>
+    <string name="all">All</string>
+    <string name="running">Running</string>
+    <string name="stopped">Stopped</string>
+    <string name="start_stack">Start Stack</string>
+    <string name="stop_stack">Stop Stack</string>
+    <string name="services">Services</string>
+</resources>

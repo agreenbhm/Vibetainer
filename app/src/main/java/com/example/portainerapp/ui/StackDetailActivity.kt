@@ -2,9 +2,6 @@ package com.example.portainerapp.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.View
-import android.widget.LinearLayout
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -27,6 +24,7 @@ import kotlinx.coroutines.withContext
 
 class StackDetailActivity : AppCompatActivity() {
     private lateinit var currentStackName: String
+    private var currentStackId: Int = -1
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
         menuInflater.inflate(R.menu.menu_stack_detail, menu)
         return true
@@ -78,7 +76,7 @@ class StackDetailActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { finish() }
-        com.example.portainerapp.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.swipe_stack))
+        EdgeToEdge.apply(this, toolbar, findViewById(R.id.swipe_stack))
 
         val swipe = findViewById<SwipeRefreshLayout>(R.id.swipe_stack)
         val chipAll: Chip = findViewById(R.id.chip_filter_all)
@@ -86,6 +84,10 @@ class StackDetailActivity : AppCompatActivity() {
         val chipStopped: Chip = findViewById(R.id.chip_filter_stopped)
         val servicesRecycler = findViewById<RecyclerView>(R.id.recycler_stack_services)
         val recycler = findViewById<RecyclerView>(R.id.recycler_stack_containers)
+        val btnStart = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_stack_start)
+        val btnStop = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_stack_stop)
+        btnStart.isEnabled = false
+        btnStop.isEnabled = false
         // Disable nested scrolling so the whole page scrolls as one
         servicesRecycler.isNestedScrollingEnabled = false
         recycler.isNestedScrollingEnabled = false
@@ -236,6 +238,61 @@ class StackDetailActivity : AppCompatActivity() {
             }
         }
 
+        // Resolve and cache stack ID for actions and YAML
+        fun resolveStackId() {
+            lifecycleScope.launch {
+                try {
+                    val stacks = withContext(Dispatchers.IO) { api.listStacks() }
+                    val id = stacks.firstOrNull { (it.Name ?: "") == stackName && (it.EndpointId ?: -1) == endpointId }?.Id
+                    if (id != null) {
+                        currentStackId = id
+                        btnStart.isEnabled = true
+                        btnStop.isEnabled = true
+                    }
+                } catch (_: Exception) { /* ignore; buttons remain disabled */ }
+            }
+        }
+
+        btnStart.setOnClickListener {
+            if (currentStackId <= 0) return@setOnClickListener
+            swipe.isRefreshing = true
+            lifecycleScope.launch {
+                try {
+                    val resp = withContext(Dispatchers.IO) { api.stackStart(currentStackId, endpointId) }
+                    if (resp.isSuccessful) {
+                        Snackbar.make(recycler, "Stack start triggered", Snackbar.LENGTH_SHORT).show()
+                        load()
+                    } else {
+                        Snackbar.make(recycler, "Failed to start: ${resp.code()}", Snackbar.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Snackbar.make(recycler, "Start error: ${e.message}", Snackbar.LENGTH_LONG).show()
+                } finally {
+                    swipe.isRefreshing = false
+                }
+            }
+        }
+
+        btnStop.setOnClickListener {
+            if (currentStackId <= 0) return@setOnClickListener
+            swipe.isRefreshing = true
+            lifecycleScope.launch {
+                try {
+                    val resp = withContext(Dispatchers.IO) { api.stackStop(currentStackId, endpointId) }
+                    if (resp.isSuccessful) {
+                        Snackbar.make(recycler, "Stack stop triggered", Snackbar.LENGTH_SHORT).show()
+                        load()
+                    } else {
+                        Snackbar.make(recycler, "Failed to stop: ${resp.code()}", Snackbar.LENGTH_LONG).show()
+                    }
+                } catch (e: Exception) {
+                    Snackbar.make(recycler, "Stop error: ${e.message}", Snackbar.LENGTH_LONG).show()
+                } finally {
+                    swipe.isRefreshing = false
+                }
+            }
+        }
+
         // YAML handling implemented via onOptionsItemSelected
 
         when (initialFilter?.lowercase()) {
@@ -248,11 +305,12 @@ class StackDetailActivity : AppCompatActivity() {
         chipStopped.setOnClickListener { applyFilter() }
         findViewById<ChipGroup>(R.id.chip_group_state).setOnCheckedStateChangeListener { _, ids -> if (ids.isEmpty()) chipAll.isChecked = true; applyFilter() }
         swipe.setOnRefreshListener { load() }
+        resolveStackId()
         load()
     }
 
     private fun confirmRemoveSelected(
-        adapter: com.example.portainerapp.ui.adapters.ContainerAdapter,
+        adapter: ContainerAdapter,
         api: PortainerService,
         endpointId: Int,
         currentContainers: List<com.example.portainerapp.network.ContainerSummary>
@@ -275,7 +333,7 @@ class StackDetailActivity : AppCompatActivity() {
                         val resp = runCatching { api.containerRemove(endpointId, id, force = 0, v = 1, agentTarget = agentTarget) }.getOrNull()
                         if (resp != null && resp.isSuccessful) removed++ else skipped++
                     }
-                    com.google.android.material.snackbar.Snackbar.make(findViewById(R.id.recycler_stack_containers), "Removed $removed; $skipped skipped", com.google.android.material.snackbar.Snackbar.LENGTH_LONG).show()
+                    Snackbar.make(findViewById(R.id.recycler_stack_containers), "Removed $removed; $skipped skipped", Snackbar.LENGTH_LONG).show()
                     adapter.clearSelection()
                     findViewById<SwipeRefreshLayout>(R.id.swipe_stack).isRefreshing = true
                     recreate()
