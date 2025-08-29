@@ -418,152 +418,92 @@ findViewById<MaterialButton>(R.id.btn_create_stack).setOnClickListener {
     }
 
     private fun addAdditionalFieldRow(container: android.widget.LinearLayout, key: String, value: Any?) {
-        val ctx = container.context
-        val wrap = android.widget.LinearLayout(ctx).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            val p = (8 * ctx.resources.displayMetrics.density).toInt()
-            setPadding(0, p, 0, 0)
-        }
-        val keyLayout = com.google.android.material.textfield.TextInputLayout(ctx)
-        keyLayout.hint = "Key"
-        val keyEdit = com.google.android.material.textfield.TextInputEditText(ctx)
-        keyEdit.setText(key)
-        keyLayout.addView(keyEdit)
+        val row = layoutInflater.inflate(R.layout.row_additional_field, container, false) as android.view.ViewGroup
 
-        val valLayout = com.google.android.material.textfield.TextInputLayout(ctx)
-        valLayout.hint = "Value (YAML)"
-        val valEdit = com.google.android.material.textfield.TextInputEditText(ctx)
-        valEdit.setSingleLine(false)
-        valEdit.minLines = 1
-        valEdit.maxLines = 6
-        val dump = try { Yaml().dump(value).trim() } catch (_: Throwable) { value?.toString() ?: "" }
-        valEdit.setText(if (dump == "''") "" else dump)
-        valLayout.addView(valEdit)
+        val keyTil = row.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("extra_key")
+        val valTil = row.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("extra_value")
+        val keyEt  = row.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_key)
+        val valEt  = row.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.et_value)
 
-        wrap.tag = "extra_field"
-        keyLayout.tag = "extra_key"
-        valLayout.tag = "extra_value"
+        keyEt.setText(key)
+        val dump = try { org.yaml.snakeyaml.Yaml().dump(value).trim() } catch (_: Throwable) { value?.toString() ?: "" }
+        valEt.setText(if (dump == "''") "" else dump)
 
-        wrap.addView(keyLayout)
-        wrap.addView(valLayout)
-        container.addView(wrap)
+        row.tag = "extra_field" // keep your tag contract
+
+        // Remove button
+        row.findViewById<android.widget.ImageButton>(R.id.btn_remove_field)
+            .setOnClickListener { container.removeView(row) }
+
+        container.addView(row)
     }
 
 
     private fun addServiceBlock(name: String?, svc: Map<*, *>?) {
-        val ctx = this
         val parent = findViewById<android.widget.LinearLayout>(R.id.services_extra_container)
-        val block = android.widget.LinearLayout(ctx).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            val p = (12 * resources.displayMetrics.density).toInt()
-            setPadding(0, p, 0, p)
-            background = null
-        }
-        val nameLayout = com.google.android.material.textfield.TextInputLayout(ctx)
-        nameLayout.hint = "Service name"
-        val nameEdit = com.google.android.material.textfield.TextInputEditText(ctx)
-        nameEdit.setText(name ?: "")
-        nameLayout.addView(nameEdit)
-        block.addView(nameLayout)
 
-        val imageLayout = com.google.android.material.textfield.TextInputLayout(ctx)
-        imageLayout.hint = "Image"
-        val imageEdit = com.google.android.material.textfield.TextInputEditText(ctx)
-        imageLayout.addView(imageEdit)
-        block.addView(imageLayout)
+        val block = layoutInflater.inflate(
+            R.layout.service_block, parent, false
+        ) as android.view.ViewGroup
 
-        val commandLayout = com.google.android.material.textfield.TextInputLayout(ctx).apply { hint = "Command"; boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE }
-        val commandEdit = com.google.android.material.textfield.TextInputEditText(ctx)
-        commandLayout.addView(commandEdit)
-        block.addView(commandLayout)
+        // TILs / ETs
+        val nameTil = block.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("svc_name")
+        val imageTil = block.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("svc_image")
+        val cmdTil   = block.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("svc_command")
+        val entryTil = block.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("svc_entrypoint")
+        val portsTil = block.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("svc_ports")
+        val volsTil  = block.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("svc_volumes")
+        val envTil   = block.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("svc_env")
+        val restartTil = block.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("svc_restart")
+        val netsTil  = block.findViewWithTag<com.google.android.material.textfield.TextInputLayout>("svc_networks")
+        val extraContainer = block.findViewWithTag<android.widget.LinearLayout>("svc_extra_container")
 
-        val entryLayout = com.google.android.material.textfield.TextInputLayout(ctx).apply { hint = "Entrypoint"; boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE }
-        val entryEdit = com.google.android.material.textfield.TextInputEditText(ctx)
-        entryLayout.addView(entryEdit)
-        block.addView(entryLayout)
+        val nameEt = nameTil.editText as com.google.android.material.textfield.TextInputEditText
+        val imageEt = imageTil.editText as com.google.android.material.textfield.TextInputEditText
+        val cmdEt = cmdTil.editText as com.google.android.material.textfield.TextInputEditText
+        val entryEt = entryTil.editText as com.google.android.material.textfield.TextInputEditText
+        val portsEt = portsTil.editText as com.google.android.material.textfield.TextInputEditText
+        val volsEt = volsTil.editText as com.google.android.material.textfield.TextInputEditText
+        val envEt = envTil.editText as com.google.android.material.textfield.TextInputEditText
+        val restartEt = restartTil.editText as com.google.android.material.textfield.TextInputEditText
+        val netsEt = netsTil.editText as com.google.android.material.textfield.TextInputEditText
 
-        val portsLayout = com.google.android.material.textfield.TextInputLayout(ctx).apply { hint = "Ports (one per line)"; boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE }
-        val portsEdit = com.google.android.material.textfield.TextInputEditText(ctx).apply { setSingleLine(false); minLines = 2 }
-        portsLayout.addView(portsEdit)
-        block.addView(portsLayout)
-
-        val volsLayout = com.google.android.material.textfield.TextInputLayout(ctx).apply { hint = "Volumes (host:container, one per line)"; boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE }
-        val volsEdit = com.google.android.material.textfield.TextInputEditText(ctx).apply { setSingleLine(false); minLines = 2 }
-        volsLayout.addView(volsEdit)
-        block.addView(volsLayout)
-
-        val envLayout = com.google.android.material.textfield.TextInputLayout(ctx).apply { hint = "Environment (KEY=VALUE, one per line)"; boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE }
-        val envEdit = com.google.android.material.textfield.TextInputEditText(ctx).apply { setSingleLine(false); minLines = 2 }
-        envLayout.addView(envEdit)
-        block.addView(envLayout)
-
-        val restartLayout = com.google.android.material.textfield.TextInputLayout(ctx).apply { hint = "Restart policy"; boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE }
-        val restartEdit = com.google.android.material.textfield.TextInputEditText(ctx)
-        restartLayout.addView(restartEdit)
-        block.addView(restartLayout)
-
-        val netsLayout = com.google.android.material.textfield.TextInputLayout(ctx).apply { hint = "Networks (one per line)"; boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE }
-        val netsEdit = com.google.android.material.textfield.TextInputEditText(ctx).apply { setSingleLine(false); minLines = 1 }
-        netsLayout.addView(netsEdit)
-        block.addView(netsLayout)
-
-        val extraTitle = android.widget.TextView(ctx).apply {
-            text = "Additional fields"
-            setPadding(0, (8*resources.displayMetrics.density).toInt(), 0, 0)
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-        }
-        block.addView(extraTitle)
-        val extraContainer = android.widget.LinearLayout(ctx).apply { orientation = android.widget.LinearLayout.VERTICAL }
-        block.addView(extraContainer)
-        val addFieldBtn = com.google.android.material.button.MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
-            text = "Add field"
-            setOnClickListener { addAdditionalFieldRow(extraContainer, "", "") }
-        }
-        block.addView(addFieldBtn)
-        // Duplicate button removed per request
-        val removeBtn = com.google.android.material.button.MaterialButton(ctx, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
-            text = "Remove Service"
-            setOnClickListener {
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
-                .setTitle("Remove service?")
-                .setMessage("This will remove this service block from the stack.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Remove") { _, _ -> parent.removeView(block) }
-                .show()
-        }
-        }
-        block.addView(removeBtn)
-
+        // Pre-fill
+        nameEt.setText(name ?: "")
         svc?.let { m ->
-            imageEdit.setText((m["image"] as? String) ?: "")
-            commandEdit.setText((m["command"] as? String) ?: "")
-            entryEdit.setText((m["entrypoint"] as? String) ?: "")
-            (m["ports"] as? List<*>)?.let { portsEdit.setText(it.joinToString("\n") { v -> v.toString() }) }
-            (m["volumes"] as? List<*>)?.let { volsEdit.setText(it.joinToString("\n") { v -> v.toString() }) }
-            (m["environment"] as? List<*>)?.let { envEdit.setText(it.joinToString("\n") { v -> v.toString() }) }
-            restartEdit.setText((m["restart"] as? String) ?: "")
-            (m["networks"] as? List<*>)?.let { netsEdit.setText(it.joinToString("\n") { v -> v.toString() }) }
+            imageEt.setText((m["image"] as? String) ?: "")
+            cmdEt.setText((m["command"] as? String) ?: "")
+            entryEt.setText((m["entrypoint"] as? String) ?: "")
+            (m["ports"] as? List<*>)?.let { portsEt.setText(it.joinToString("\n") { v -> v.toString() }) }
+            (m["volumes"] as? List<*>)?.let { volsEt.setText(it.joinToString("\n") { v -> v.toString() }) }
+            (m["environment"] as? List<*>)?.let { envEt.setText(it.joinToString("\n") { v -> v.toString() }) }
+            restartEt.setText((m["restart"] as? String) ?: "")
+            (m["networks"] as? List<*>)?.let { netsEt.setText(it.joinToString("\n") { v -> v.toString() }) }
+
             val known = setOf("image","command","entrypoint","ports","volumes","environment","restart","networks")
             m.forEach { (kk, vv) ->
-                val key = kk?.toString() ?: return@forEach
-                if (!known.contains(key)) {
-                    addAdditionalFieldRow(extraContainer, key, vv)
-                }
+                val k = kk?.toString() ?: return@forEach
+                if (k !in known) addAdditionalFieldRow(extraContainer, k, vv)
             }
         }
 
-        nameLayout.tag = "svc_name"
-        imageLayout.tag = "svc_image"
-        commandLayout.tag = "svc_command"
-        entryLayout.tag = "svc_entrypoint"
-        portsLayout.tag = "svc_ports"
-        volsLayout.tag = "svc_volumes"
-        envLayout.tag = "svc_env"
-        restartLayout.tag = "svc_restart"
-        netsLayout.tag = "svc_networks"
-        extraContainer.tag = "svc_extra_container"
+        // Buttons
+        block.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_add_field)
+            .setOnClickListener { addAdditionalFieldRow(extraContainer, "", "") }
+
+        block.findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_remove_service)
+            .setOnClickListener {
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle("Remove service?")
+                    .setMessage("This will remove this service block from the stack.")
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Remove") { _, _ -> parent.removeView(block) }
+                    .show()
+            }
+
         parent.addView(block)
     }
+
 
     private fun applyEditorTheme() {
         val reg = ThemeRegistry.getInstance()
