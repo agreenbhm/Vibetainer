@@ -74,4 +74,16 @@ class StacksListActivity : AppCompatActivity() {
         swipe.setOnRefreshListener { load() }
         load()
     }
+
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_stacks_list, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_new_stack -> { startActivity(Intent(this, StackCreateActivity::class.java)); true }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
 }

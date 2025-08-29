@@ -54,6 +54,9 @@
         <activity
             android:name=".ui.StacksListActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.StackCreateActivity"
+            android:exported="false" />
             <activity
             android:name=".ui.NodeImagesActivity"
             android:exported="false" />

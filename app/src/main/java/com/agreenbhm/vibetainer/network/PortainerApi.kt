@@ -101,6 +101,24 @@ interface PortainerService {
         @Body body: StackUpdateRequest
     ): retrofit2.Response<Unit>
 
+    // Create a new stack from raw compose content
+    @POST("api/stacks/create/swarm/string")
+    suspend fun createStackSwarmFromString(
+        @Query("endpointId") endpointId: Int,
+        @Body body: StackCreateRequest
+    ): retrofit2.Response<Unit>
+
+    @POST("api/stacks/create/standalone/string")
+    suspend fun createStackStandaloneFromString(
+        @Query("endpointId") endpointId: Int,
+        @Body body: StackCreateRequest
+    ): retrofit2.Response<Unit>
+
+    @GET("api/endpoints/{endpointId}/docker/swarm")
+    suspend fun swarmInfo(
+        @Path("endpointId") endpointId: Int
+    ): SwarmInfo
+
     // Stack lifecycle
     @POST("api/stacks/{id}/start")
     suspend fun stackStart(
@@ -297,6 +315,22 @@ data class StackUpdateRequest(
     @SerializedName("StackFileContent") val StackFileContent: String,
     @SerializedName("Prune") val Prune: Boolean = false
 )
+
+data class StackCreateRequest(
+    @SerializedName("env") val env: List<StackEnvVar> = emptyList(),
+    @SerializedName("fromAppTemplate") val fromAppTemplate: Boolean = false,
+    @SerializedName("name") val name: String,
+    @SerializedName("registries") val registries: List<Int> = emptyList(),
+    @SerializedName("stackFileContent") val stackFileContent: String,
+    @SerializedName("swarmID") val swarmID: String? = null
+)
+
+data class StackEnvVar(
+    @SerializedName("name") val name: String,
+    @SerializedName("value") val value: String
+)
+
+data class SwarmInfo(@SerializedName("ID") val ID: String?)
 
 object PortainerApi {
     fun create(baseUrl: String, apiToken: String, enableLogging: Boolean = true): PortainerService {
