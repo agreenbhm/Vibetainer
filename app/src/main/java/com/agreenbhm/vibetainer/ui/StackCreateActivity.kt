@@ -44,7 +44,7 @@ class StackCreateActivity : AppCompatActivity() {
         toolbar.title = "Create Stack"
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        toolbar.setNavigationOnClickListener { finish() }
+        toolbar.setNavigationOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         EdgeToEdge.apply(this, toolbar, findViewById(R.id.container_modes))
         // Confirm on back if there are unsaved inputs
