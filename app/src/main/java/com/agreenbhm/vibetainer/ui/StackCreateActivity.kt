@@ -152,7 +152,7 @@ class StackCreateActivity : AppCompatActivity() {
                 textSwarmStatus.text = "Swarm detected: ${lastSwarmId}"
             }
         }
-                findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_add_service_extra_field).setOnClickListener {
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_add_service_extra_field).setOnClickListener {
             val container = findViewById<android.widget.LinearLayout>(R.id.additional_fields_container)
             addAdditionalFieldRow(container, "", "")
         }
@@ -424,20 +424,20 @@ findViewById<MaterialButton>(R.id.btn_create_stack).setOnClickListener {
             val p = (8 * ctx.resources.displayMetrics.density).toInt()
             setPadding(0, p, 0, 0)
         }
-        val keyLayout = com.google.android.material.textfield.TextInputLayout(ctx).apply { boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE }
+        val keyLayout = com.google.android.material.textfield.TextInputLayout(ctx)
         keyLayout.hint = "Key"
         val keyEdit = com.google.android.material.textfield.TextInputEditText(ctx)
         keyEdit.setText(key)
         keyLayout.addView(keyEdit)
 
-        val valLayout = com.google.android.material.textfield.TextInputLayout(ctx).apply { boxBackgroundMode = com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE }
+        val valLayout = com.google.android.material.textfield.TextInputLayout(ctx)
         valLayout.hint = "Value (YAML)"
         val valEdit = com.google.android.material.textfield.TextInputEditText(ctx)
         valEdit.setSingleLine(false)
         valEdit.minLines = 1
         valEdit.maxLines = 6
         val dump = try { Yaml().dump(value).trim() } catch (_: Throwable) { value?.toString() ?: "" }
-        valEdit.setText(dump)
+        valEdit.setText(if (dump == "''") "" else dump)
         valLayout.addView(valEdit)
 
         wrap.tag = "extra_field"

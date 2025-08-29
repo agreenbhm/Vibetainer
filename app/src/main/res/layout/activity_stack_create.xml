@@ -18,8 +18,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="8dp"
-        app:singleSelection="true"
-        app:selectionRequired="true">
+        app:selectionRequired="true"
+        app:singleSelection="true">
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_mode_guided"
             style="@style/Widget.Material3.Button.OutlinedButton"
@@ -65,14 +65,15 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:paddingTop="8dp"
                     android:text="Service"
-                    android:textStyle="bold"
-                    android:paddingTop="8dp" />
+                    android:textStyle="bold" />
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Service name">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_service_name"
                         android:layout_width="match_parent"
@@ -83,6 +84,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Image (e.g., nginx:latest)">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_image"
                         android:layout_width="match_parent"
@@ -93,6 +95,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Command (optional)">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_command"
                         android:layout_width="match_parent"
@@ -103,6 +106,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Entrypoint (optional)">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_entrypoint"
                         android:layout_width="match_parent"
@@ -113,6 +117,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Ports (one per line, e.g., 8080:80)">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_ports"
                         android:layout_width="match_parent"
@@ -125,6 +130,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Volumes (one per line, host:container)">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_volumes"
                         android:layout_width="match_parent"
@@ -137,6 +143,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Environment (one per line, KEY=VALUE)">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_env"
                         android:layout_width="match_parent"
@@ -149,6 +156,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Registry IDs (comma-separated)">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_registries"
                         android:layout_width="match_parent"
@@ -160,6 +168,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Network name (optional)">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_network"
                         android:layout_width="match_parent"
@@ -170,6 +179,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Restart policy (no, always, unless-stopped, on-failure)">
+
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/input_restart"
                         android:layout_width="match_parent"
@@ -180,9 +190,9 @@
                     android:id="@+id/text_additional_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:paddingTop="8dp"
                     android:text="Additional service fields"
                     android:textStyle="bold"
-                    android:paddingTop="8dp"
                     android:visibility="gone" />
 
                 <LinearLayout
@@ -201,9 +211,9 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:paddingTop="12dp"
                     android:text="Additional services"
-                    android:textStyle="bold"
-                    android:paddingTop="12dp" />
+                    android:textStyle="bold" />
 
                 <LinearLayout
                     android:id="@+id/services_extra_container"
@@ -222,9 +232,9 @@
                     android:id="@+id/text_stack_additional_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:paddingTop="12dp"
                     android:text="Additional stack fields"
                     android:textStyle="bold"
-                    android:paddingTop="12dp"
                     android:visibility="gone" />
 
                 <LinearLayout
@@ -254,12 +264,12 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="12dp"
-        android:paddingEnd="12dp"
         android:paddingTop="6dp"
-        android:paddingBottom="0dp"
-        android:gravity="center_vertical">
+        android:paddingEnd="12dp"
+        android:paddingBottom="0dp">
 
         <TextView
             android:layout_width="0dp"
@@ -288,7 +298,7 @@
         style="@style/Widget.Material3.Button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Create Stack"
-        android:layout_margin="12dp" />
+        android:layout_margin="12dp"
+        android:text="Create Stack" />
 
 </LinearLayout>
