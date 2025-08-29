@@ -8,4 +8,5 @@
     <string name="start_stack">Start Stack</string>
     <string name="stop_stack">Stop Stack</string>
     <string name="services">Services</string>
+    <string name="stack_example">Stack: example</string>
 </resources>

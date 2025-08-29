@@ -48,7 +48,7 @@
             android:paddingBottom="4dp"
             android:textSize="12sp"
             android:textColor="?attr/colorOnSurfaceVariant"
-            android:text="Stack: example"
+            android:text="@string/stack_example"
             android:visibility="gone" />
 
         <com.google.android.material.chip.ChipGroup
