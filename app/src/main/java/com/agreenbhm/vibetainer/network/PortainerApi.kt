@@ -151,6 +151,14 @@ interface PortainerService {
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     ): VolumesResponse
 
+    // Prune unused volumes (Docker API: POST /volumes/prune)
+    @POST("api/endpoints/{endpointId}/docker/volumes/prune")
+    suspend fun pruneVolumes(
+        @Path("endpointId") endpointId: Int,
+        @Body body: VolumePruneRequest? = null,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): VolumePruneResponse
+
     @GET("api/endpoints/{endpointId}/docker/containers/{id}/stats")
     suspend fun containerStats(
         @Path("endpointId") endpointId: Int,
@@ -262,6 +270,16 @@ data class VolumesResponse(
 
 data class Volume(
     val Name: String?
+)
+
+// Prune request/response models
+data class VolumePruneRequest(
+    @SerializedName("filters") val filters: Map<String, List<String>>? = null
+)
+
+data class VolumePruneResponse(
+    @SerializedName("VolumesDeleted") val VolumesDeleted: List<String>?,
+    @SerializedName("SpaceReclaimed") val SpaceReclaimed: Long?
 )
 
 data class ContainerInspect(
