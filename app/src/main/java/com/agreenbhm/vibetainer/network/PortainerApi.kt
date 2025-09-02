@@ -153,6 +153,21 @@ interface PortainerService {
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     ): ImagePruneResponse
 
+    // Portainer environment-level images with usage info
+    @GET("api/docker/{environmentId}/images")
+    suspend fun listEnvironmentImages(
+        @Path("environmentId") environmentId: Int,
+        @Query("withUsage") withUsage: Boolean = false
+    ): List<EnvironmentImage>
+
+    @retrofit2.http.DELETE("api/endpoints/{endpointId}/docker/images/{id}")
+    suspend fun deleteImage(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Query("force") force: Int = 1,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): retrofit2.Response<Unit>
+
     @GET("api/endpoints/{endpointId}/docker/volumes")
     suspend fun listVolumes(
         @Path("endpointId") endpointId: Int,
@@ -305,6 +320,16 @@ data class ImagePruneResponse(
 data class ImageDeletedEntry(
     @SerializedName("Untagged") val Untagged: String? = null,
     @SerializedName("Deleted") val Deleted: String? = null
+)
+
+// Environment-level image entry returned by Portainer's /api/docker/{env}/images
+data class EnvironmentImage(
+    @SerializedName("created") val created: Long?,
+    @SerializedName("nodeName") val nodeName: String?,
+    @SerializedName("id") val id: String?,
+    @SerializedName("size") val size: Long?,
+    @SerializedName("tags") val tags: List<String>?,
+    @SerializedName("used") val used: Boolean?
 )
 
 

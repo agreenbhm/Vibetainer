@@ -17,14 +17,18 @@ import com.agreenbhm.vibetainer.network.ImagePruneRequest
 import com.agreenbhm.vibetainer.network.ImagePruneResponse
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import com.agreenbhm.vibetainer.ui.ImageItemAdapter
+import com.agreenbhm.vibetainer.network.EnvironmentImage
 
 class NodeImagesActivity : AppCompatActivity() {
+    private lateinit var adapter: ImageItemAdapter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_list_generic)
 
         val endpointId = intent.getIntExtra("endpoint_id", -1)
-        val agentTarget = intent.getStringExtra("agent_target")
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_list)
         toolbar.title = "Images"
@@ -36,27 +40,39 @@ class NodeImagesActivity : AppCompatActivity() {
         val recycler = findViewById<RecyclerView>(R.id.recycler_list)
         val swipe = findViewById<SwipeRefreshLayout>(R.id.swipe_list)
         recycler.layoutManager = LinearLayoutManager(this)
-        val adapter = SimpleTextAdapter()
+        adapter = ImageItemAdapter({ selectionCount ->
+            supportActionBar?.subtitle = if (selectionCount > 0) "Selected: $selectionCount" else null
+        }, { item ->
+            // start selection mode and select this item
+            adapter.enterSelectionModeAndSelect(item)
+        })
         recycler.adapter = adapter
 
-        val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
-        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
-
-        fun load() {
-            swipe.isRefreshing = true
-            lifecycleScope.launch {
-                try {
-                    val images = api.listImages(endpointId, agentTarget)
-                    adapter.submit(images.map { it.RepoTags?.firstOrNull() ?: (it.Id ?: "<none>") }.sortedBy { it.lowercase() })
-                } catch (e: Exception) {
-                    Snackbar.make(recycler, "Failed: ${e.message}", Snackbar.LENGTH_LONG).show()
-                } finally {
-                    swipe.isRefreshing = false
-                }
-            }
-        }
         swipe.setOnRefreshListener { load() }
         load()
+    }
+
+    private fun load() {
+        val endpointId = intent.getIntExtra("endpoint_id", -1)
+        val recycler = findViewById<RecyclerView>(R.id.recycler_list)
+        val swipe = findViewById<SwipeRefreshLayout>(R.id.swipe_list)
+        swipe.isRefreshing = true
+        val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        lifecycleScope.launch {
+            try {
+                val usedDeferred = async { runCatching { api.listEnvironmentImages(endpointId, true) }.getOrDefault(emptyList()) }
+                val unusedDeferred = async { runCatching { api.listEnvironmentImages(endpointId, false) }.getOrDefault(emptyList()) }
+                val used = usedDeferred.await()
+                val unused = unusedDeferred.await()
+                val combined: List<EnvironmentImage> = (used + unused)
+                adapter.submitList(combined.map { ImageListItem(it) })
+            } catch (e: Exception) {
+                Snackbar.make(recycler, "Failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+            } finally {
+                swipe.isRefreshing = false
+            }
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -66,14 +82,10 @@ class NodeImagesActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.action_prune_images -> {
-                confirmAndPruneImages()
-                return true
-            }
-            android.R.id.home -> {
-                finish()
-                return true
-            }
+            R.id.action_prune_images -> { confirmAndPruneImages(); return true }
+            R.id.action_delete_selected -> { deleteSelected(); return true }
+            R.id.action_delete_all_unused -> { deleteAllUnused(); return true }
+            android.R.id.home -> { finish(); return true }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -83,7 +95,6 @@ class NodeImagesActivity : AppCompatActivity() {
         val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
         val endpointId = intent.getIntExtra("endpoint_id", -1)
-        val agentTarget = intent.getStringExtra("agent_target")
 
         MaterialAlertDialogBuilder(this)
             .setTitle("Prune unused images")
@@ -101,23 +112,87 @@ class NodeImagesActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     try {
                         val req = ImagePruneRequest(mapOf("dangling" to listOf("true")))
-                        val resp: ImagePruneResponse = api.pruneImages(endpointId, req, agentTarget)
+                        val resp: ImagePruneResponse = api.pruneImages(endpointId, req, null)
                         val deleted = resp.ImagesDeleted?.size ?: 0
                         val reclaimed = resp.SpaceReclaimed ?: 0L
                         dlg.dismiss()
                         Snackbar.make(recycler, "Pruned $deleted images, reclaimed ${formatBytes(reclaimed)}", Snackbar.LENGTH_LONG).show()
-                        // Refresh list
-                        findViewById<SwipeRefreshLayout>(R.id.swipe_list).isRefreshing = true
-                        try {
-                            val newResp = api.listImages(endpointId, agentTarget)
-                            val adapter = findViewById<RecyclerView>(R.id.recycler_list).adapter as? SimpleTextAdapter
-                            adapter?.submit(newResp.map { it.RepoTags?.firstOrNull() ?: (it.Id ?: "<none>") }.sortedBy { it.lowercase() })
-                        } catch (_: Exception) { }
-                        findViewById<SwipeRefreshLayout>(R.id.swipe_list).isRefreshing = false
+                        load()
                     } catch (e: Exception) {
                         dlg.dismiss()
-                        android.util.Log.e("NodeImagesActivity", "Failed to prune images", e)
                         Snackbar.make(recycler, "Prune failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun deleteSelected() {
+        val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        val endpointId = intent.getIntExtra("endpoint_id", -1)
+        val recycler = findViewById<RecyclerView>(R.id.recycler_list)
+        val selected = adapter.getSelectedItems()
+        if (selected.isEmpty()) {
+            Snackbar.make(recycler, "No images selected", Snackbar.LENGTH_SHORT).show()
+            return
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Delete selected images")
+            .setMessage("Delete ${selected.size} selected images? This cannot be undone.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Delete") { _, _ ->
+                val dlg = MaterialAlertDialogBuilder(this).setView(ProgressBar(this)).setCancelable(false).create()
+                dlg.show()
+                lifecycleScope.launch {
+                    var success = 0
+                    for (it in selected) {
+                        try {
+                            val node = it.image.nodeName
+                            val id = it.image.id ?: continue
+                            api.deleteImage(endpointId, id, 1, node)
+                            success++
+                        } catch (_: Exception) { }
+                    }
+                    dlg.dismiss()
+                    Snackbar.make(recycler, "Deleted $success images", Snackbar.LENGTH_LONG).show()
+                    adapter.clearSelection()
+                    load()
+                }
+            }
+            .show()
+    }
+
+    private fun deleteAllUnused() {
+        val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        val endpointId = intent.getIntExtra("endpoint_id", -1)
+        val recycler = findViewById<RecyclerView>(R.id.recycler_list)
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Delete all unused images")
+            .setMessage("Delete all unused images across the environment? This cannot be undone.")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Delete") { _, _ ->
+                val dlg = MaterialAlertDialogBuilder(this).setView(ProgressBar(this)).setCancelable(false).create()
+                dlg.show()
+                lifecycleScope.launch {
+                    try {
+                        val unused = api.listEnvironmentImages(endpointId, false)
+                        var success = 0
+                        for (it in unused) {
+                            try {
+                                val node = it.nodeName
+                                val id = it.id ?: continue
+                                api.deleteImage(endpointId, id, 1, node)
+                                success++
+                            } catch (_: Exception) { }
+                        }
+                        dlg.dismiss()
+                        Snackbar.make(recycler, "Deleted $success unused images", Snackbar.LENGTH_LONG).show()
+                        load()
+                    } catch (e: Exception) {
+                        dlg.dismiss()
+                        Snackbar.make(recycler, "Failed: ${e.message}", Snackbar.LENGTH_LONG).show()
                     }
                 }
             }
