@@ -9,6 +9,12 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.agreenbhm.vibetainer.R
 import com.agreenbhm.vibetainer.network.PortainerApi
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import android.view.Menu
+import android.view.MenuItem
+import android.widget.ProgressBar
+import com.agreenbhm.vibetainer.network.ImagePruneRequest
+import com.agreenbhm.vibetainer.network.ImagePruneResponse
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 
@@ -51,5 +57,82 @@ class NodeImagesActivity : AppCompatActivity() {
         }
         swipe.setOnRefreshListener { load() }
         load()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_node_images, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.action_prune_images -> {
+                confirmAndPruneImages()
+                return true
+            }
+            android.R.id.home -> {
+                finish()
+                return true
+            }
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    private fun confirmAndPruneImages() {
+        val recycler = findViewById<RecyclerView>(R.id.recycler_list)
+        val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        val endpointId = intent.getIntExtra("endpoint_id", -1)
+        val agentTarget = intent.getStringExtra("agent_target")
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Prune unused images")
+            .setMessage("This will remove unused Docker images on the endpoint. This action cannot be undone. Continue?")
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Prune") { _, _ ->
+                val progressBar = ProgressBar(this)
+                val dlg = MaterialAlertDialogBuilder(this)
+                    .setTitle("Pruning images")
+                    .setView(progressBar)
+                    .setCancelable(false)
+                    .create()
+                dlg.show()
+
+                lifecycleScope.launch {
+                    try {
+                        val req = ImagePruneRequest(mapOf("dangling" to listOf("true")))
+                        val resp: ImagePruneResponse = api.pruneImages(endpointId, req, agentTarget)
+                        val deleted = resp.ImagesDeleted?.size ?: 0
+                        val reclaimed = resp.SpaceReclaimed ?: 0L
+                        dlg.dismiss()
+                        Snackbar.make(recycler, "Pruned $deleted images, reclaimed ${formatBytes(reclaimed)}", Snackbar.LENGTH_LONG).show()
+                        // Refresh list
+                        findViewById<SwipeRefreshLayout>(R.id.swipe_list).isRefreshing = true
+                        try {
+                            val newResp = api.listImages(endpointId, agentTarget)
+                            val adapter = findViewById<RecyclerView>(R.id.recycler_list).adapter as? SimpleTextAdapter
+                            adapter?.submit(newResp.map { it.RepoTags?.firstOrNull() ?: (it.Id ?: "<none>") }.sortedBy { it.lowercase() })
+                        } catch (_: Exception) { }
+                        findViewById<SwipeRefreshLayout>(R.id.swipe_list).isRefreshing = false
+                    } catch (e: Exception) {
+                        dlg.dismiss()
+                        android.util.Log.e("NodeImagesActivity", "Failed to prune images", e)
+                        Snackbar.make(recycler, "Prune failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes <= 0) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB", "TB")
+        var b = bytes.toDouble()
+        var idx = 0
+        while (b >= 1024 && idx < units.size - 1) {
+            b /= 1024.0
+            idx++
+        }
+        return String.format("%.1f %s", b, units[idx])
     }
 }

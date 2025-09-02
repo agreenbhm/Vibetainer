@@ -145,6 +145,14 @@ interface PortainerService {
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     ): List<ImageSummary>
 
+    // Prune unused images (Docker API: POST /images/prune)
+    @POST("api/endpoints/{endpointId}/docker/images/prune")
+    suspend fun pruneImages(
+        @Path("endpointId") endpointId: Int,
+        @Body body: ImagePruneRequest? = null,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): ImagePruneResponse
+
     @GET("api/endpoints/{endpointId}/docker/volumes")
     suspend fun listVolumes(
         @Path("endpointId") endpointId: Int,
@@ -281,6 +289,24 @@ data class VolumePruneResponse(
     @SerializedName("VolumesDeleted") val VolumesDeleted: List<String>?,
     @SerializedName("SpaceReclaimed") val SpaceReclaimed: Long?
 )
+
+// Image prune models
+data class ImagePruneRequest(
+    @SerializedName("filters") val filters: Map<String, List<String>>? = null
+)
+
+data class ImagePruneResponse(
+    @SerializedName("ImagesDeleted")
+    val ImagesDeleted: List<ImageDeletedEntry>?,   // <-- List of objects
+    @SerializedName("SpaceReclaimed")
+    val SpaceReclaimed: Long?
+)
+
+data class ImageDeletedEntry(
+    @SerializedName("Untagged") val Untagged: String? = null,
+    @SerializedName("Deleted") val Deleted: String? = null
+)
+
 
 data class ContainerInspect(
     val Name: String?,

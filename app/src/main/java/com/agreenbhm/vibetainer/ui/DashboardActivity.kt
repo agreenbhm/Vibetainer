@@ -55,6 +55,8 @@ class DashboardActivity : AppCompatActivity() {
         val nodesCount = findViewById<TextView>(R.id.text_nodes_count)
         val containersCount = findViewById<TextView>(R.id.text_containers_count)
         val servicesCount = findViewById<TextView>(R.id.text_services_count)
+        val imagesCount = findViewById<TextView>(R.id.text_images_count)
+        val volumesCount = findViewById<TextView>(R.id.text_volumes_count)
         val stacksCount = findViewById<TextView>(R.id.text_stacks_count)
         val chipRunning = findViewById<com.google.android.material.chip.Chip>(R.id.chip_running)
         val chipStopped = findViewById<com.google.android.material.chip.Chip>(R.id.chip_stopped)
@@ -67,6 +69,8 @@ class DashboardActivity : AppCompatActivity() {
                 val containersDeferred = async { runCatching { api.listContainers(endpointId, true, null) }.getOrDefault(emptyList()) }
                 val servicesDeferred = async { runCatching { api.listServices(endpointId).size }.getOrDefault(0) }
                 val stacksDeferred = async { runCatching { api.listStacks().count { (it.EndpointId ?: -1) == endpointId } }.getOrDefault(0) }
+                val imagesDeferred = async { runCatching { api.listImages(endpointId, null).size }.getOrDefault(0) }
+                val volumesDeferred = async { runCatching { api.listVolumes(endpointId, null).Volumes?.size ?: 0 }.getOrDefault(0) }
 
                 val totalNodes = nodesDeferred.await()
                 val containersList = containersDeferred.await()
@@ -75,7 +79,9 @@ class DashboardActivity : AppCompatActivity() {
 
                 nodesCount.text = totalNodes.toString()
                 containersCount.text = containersList.size.toString()
-                servicesCount.text = totalServices.toString()
+               servicesCount.text = totalServices.toString()
+                imagesCount.text = imagesDeferred.await().toString()
+                volumesCount.text = volumesDeferred.await().toString()
                 stacksCount.text = totalStacks.toString()
 
                 val runningCount = containersList.count { (it.State ?: "").equals("running", ignoreCase = true) }
@@ -95,6 +101,16 @@ class DashboardActivity : AppCompatActivity() {
 
         cardNodes.setOnClickListener {
             startActivity(Intent(this, MainActivity::class.java))
+        }
+        findViewById<View>(R.id.card_images).setOnClickListener {
+            val i = Intent(this, NodeImagesActivity::class.java)
+            i.putExtra("endpoint_id", endpointId)
+            startActivity(i)
+        }
+        findViewById<View>(R.id.card_volumes).setOnClickListener {
+            val i = Intent(this, NodeVolumesActivity::class.java)
+            i.putExtra("endpoint_id", endpointId)
+            startActivity(i)
         }
         cardContainers.setOnClickListener { startActivity(Intent(this, ContainersListActivity::class.java)) }
         chipRunning.setOnClickListener {
