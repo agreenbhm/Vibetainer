@@ -39,13 +39,17 @@ class NodeVolumesActivity : AppCompatActivity() {
         val recycler = findViewById<RecyclerView>(R.id.recycler_list)
         val swipe = findViewById<SwipeRefreshLayout>(R.id.swipe_list)
         recycler.layoutManager = LinearLayoutManager(this)
+
+        val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
+        val defaultSubtitle = agentTarget?.takeIf { it.isNotBlank() } ?: prefs.endpointName()
+        supportActionBar?.subtitle = defaultSubtitle
+
         lateinit var adapter: VolumeItemAdapter
         adapter = VolumeItemAdapter({ selectionCount ->
-            supportActionBar?.subtitle = if (selectionCount > 0) "Selected: $selectionCount" else null
+            supportActionBar?.subtitle = if (selectionCount > 0) "Selected: $selectionCount" else defaultSubtitle
         }, { item -> adapter.enterSelectionModeAndSelect(item) })
         recycler.adapter = adapter
 
-        val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
 
         swipe.setOnRefreshListener { load() }

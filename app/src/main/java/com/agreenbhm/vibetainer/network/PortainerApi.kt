@@ -160,6 +160,43 @@ interface PortainerService {
         @Query("withUsage") withUsage: Boolean = false
     ): List<EnvironmentImage>
 
+    // Docker Swarm Configs (proxied via Portainer)
+    @GET("api/endpoints/{endpointId}/docker/configs")
+    suspend fun listConfigs(
+        @Path("endpointId") endpointId: Int,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): List<ConfigSummary>
+
+    @GET("api/endpoints/{endpointId}/docker/configs/{id}")
+    suspend fun inspectConfig(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): ConfigInspect
+
+    @POST("api/endpoints/{endpointId}/docker/configs/create")
+    suspend fun createConfig(
+        @Path("endpointId") endpointId: Int,
+        @Body body: ConfigCreateRequest,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): retrofit2.Response<Unit>
+
+    @POST("api/endpoints/{endpointId}/docker/configs/{id}/update")
+    suspend fun updateConfig(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Query("version") version: Long,
+        @Body spec: ConfigSpec,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): retrofit2.Response<Unit>
+
+    @retrofit2.http.DELETE("api/endpoints/{endpointId}/docker/configs/{id}")
+    suspend fun deleteConfig(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): retrofit2.Response<Unit>
+
     @retrofit2.http.DELETE("api/endpoints/{endpointId}/docker/images/{id}")
     suspend fun deleteImage(
         @Path("endpointId") endpointId: Int,
@@ -366,11 +403,59 @@ data class EnvironmentImage(
     @SerializedName("used") val used: Boolean?
 )
 
+// Config models
+data class ConfigSummary(
+    val ID: String?,
+    val Spec: ConfigSpecSummary?
+)
+
+data class ConfigSpecSummary(
+    val Name: String?
+)
+
+data class ConfigInspect(
+    val ID: String?,
+    val Version: Version?,
+    val Spec: ConfigSpec?
+)
+
+data class ConfigSpec(
+    val Name: String?,
+    val Labels: Map<String, String>? = null,
+    val Data: String? = null
+)
+
+data class ConfigCreateRequest(
+    @SerializedName("Name") val Name: String,
+    @SerializedName("Data") val Data: String,
+    @SerializedName("Labels") val Labels: Map<String, String>? = null
+)
+
 
 data class ContainerInspect(
     val Name: String?,
     val Image: String?,
-    val State: ContainerState?
+    val State: ContainerState?,
+    val Mounts: List<ContainerMount>? = null
+)
+
+data class ContainerMount(
+    @SerializedName("Source") val Source: String? = null,
+    @SerializedName("Target") val Target: String? = null,
+    // Some Docker APIs return the mount destination as "Destination" instead of "Target"; accept both
+    @SerializedName("Destination") val Destination: String? = null,
+    @SerializedName("Type") val Type: String? = null,
+    @SerializedName("VolumeOptions") val VolumeOptions: VolumeOptions? = null
+)
+
+data class VolumeOptions(
+    @SerializedName("DriverConfig") val DriverConfig: DriverConfig? = null,
+    @SerializedName("Labels") val Labels: Map<String, String>? = null
+)
+
+data class DriverConfig(
+    @SerializedName("Name") val Name: String? = null,
+    @SerializedName("Options") val Options: Map<String, String>? = null
 )
 
 data class ContainerState(

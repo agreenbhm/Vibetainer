@@ -40,8 +40,12 @@ class NodeImagesActivity : AppCompatActivity() {
         val recycler = findViewById<RecyclerView>(R.id.recycler_list)
         val swipe = findViewById<SwipeRefreshLayout>(R.id.swipe_list)
         recycler.layoutManager = LinearLayoutManager(this)
+        val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
+        val defaultSubtitle = intent.getStringExtra("agent_target")?.takeIf { it.isNotBlank() } ?: prefs.endpointName()
+        supportActionBar?.subtitle = defaultSubtitle
+
         adapter = ImageItemAdapter({ selectionCount ->
-            supportActionBar?.subtitle = if (selectionCount > 0) "Selected: $selectionCount" else null
+            supportActionBar?.subtitle = if (selectionCount > 0) "Selected: $selectionCount" else defaultSubtitle
         }, { item ->
             // start selection mode and select this item
             adapter.enterSelectionModeAndSelect(item)

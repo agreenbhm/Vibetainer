@@ -25,6 +25,7 @@ import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+// (ActionMode customization removed)
 import org.eclipse.tm4e.core.registry.IThemeSource
 import org.yaml.snakeyaml.Yaml
 
@@ -72,6 +73,8 @@ class YamlViewerActivity : AppCompatActivity() {
 
         // Set a temporary empty text first
         editor.setText("")
+
+        // (selection callback clearing removed)
 
         // Initialize TextMate in a coroutine to handle async operations properly
         lifecycleScope.launch {

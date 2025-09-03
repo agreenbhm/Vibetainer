@@ -45,6 +45,7 @@ class DashboardActivity : AppCompatActivity() {
 
         // Set initial title to endpoint while loading
         supportActionBar?.title = prefs.endpointName() + " • Updating..."
+        supportActionBar?.subtitle = prefs.baseUrl()
 
         val cardNodes = findViewById<View>(R.id.card_nodes)
         val cardContainers = findViewById<View>(R.id.card_containers)
@@ -57,6 +58,7 @@ class DashboardActivity : AppCompatActivity() {
         val servicesCount = findViewById<TextView>(R.id.text_services_count)
         val imagesCount = findViewById<TextView>(R.id.text_images_count)
         val volumesCount = findViewById<TextView>(R.id.text_volumes_count)
+        val configsCount = findViewById<TextView>(R.id.text_configs_count)
         val stacksCount = findViewById<TextView>(R.id.text_stacks_count)
         val chipRunning = findViewById<com.google.android.material.chip.Chip>(R.id.chip_running)
         val chipStopped = findViewById<com.google.android.material.chip.Chip>(R.id.chip_stopped)
@@ -71,6 +73,7 @@ class DashboardActivity : AppCompatActivity() {
                 val stacksDeferred = async { runCatching { api.listStacks().count { (it.EndpointId ?: -1) == endpointId } }.getOrDefault(0) }
                 val imagesDeferred = async { runCatching { api.listImages(endpointId, null).size }.getOrDefault(0) }
                 val volumesDeferred = async { runCatching { api.listVolumes(endpointId, null).Volumes?.size ?: 0 }.getOrDefault(0) }
+                val configsDeferred = async { runCatching { api.listConfigs(endpointId).size }.getOrDefault(0) }
 
                 val totalNodes = nodesDeferred.await()
                 val containersList = containersDeferred.await()
@@ -82,14 +85,15 @@ class DashboardActivity : AppCompatActivity() {
                servicesCount.text = totalServices.toString()
                 imagesCount.text = imagesDeferred.await().toString()
                 volumesCount.text = volumesDeferred.await().toString()
+                configsCount.text = configsDeferred.await().toString()
                 stacksCount.text = totalStacks.toString()
 
                 val runningCount = containersList.count { (it.State ?: "").equals("running", ignoreCase = true) }
                 val stoppedCount = containersList.size - runningCount
                 chipRunning.text = "Running $runningCount"
                 chipStopped.text = "Stopped $stoppedCount"
-                val ep = prefs.endpointName()
-                supportActionBar?.title = ep
+                supportActionBar?.title = prefs.endpointName()
+                supportActionBar?.subtitle = prefs.baseUrl()
             } catch (_: Exception) {
                 Snackbar.make(cardNodes, "Failed to load counts", Snackbar.LENGTH_LONG).show()
             } finally { swipe.isRefreshing = false }
@@ -128,6 +132,11 @@ class DashboardActivity : AppCompatActivity() {
         }
         cardStacks.setOnClickListener {
             startActivity(Intent(this, StacksListActivity::class.java))
+        }
+        findViewById<View>(R.id.card_configs).setOnClickListener {
+            val i = Intent(this, ConfigsListActivity::class.java)
+            i.putExtra("endpoint_id", endpointId)
+            startActivity(i)
         }
     }
 }

@@ -26,6 +26,7 @@ import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+// (ActionMode customization removed)
 import org.yaml.snakeyaml.DumperOptions
 import org.yaml.snakeyaml.Yaml
 
@@ -71,6 +72,7 @@ class StackCreateActivity : AppCompatActivity() {
         editor = findViewById(R.id.editor_compose)
         editor.isWordwrap = true
         useLightTheme = com.agreenbhm.vibetainer.util.Prefs(this).yamlLightTheme()
+        // (selection callback clearing removed)
         // Initialize TextMate YAML highlighting & theming (same as YamlViewer)
         initTextMateForYaml()
         val switchSwarm = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switch_swarm)
@@ -217,6 +219,8 @@ findViewById<MaterialButton>(R.id.btn_create_stack).setOnClickListener {
             }
         }
     }
+
+    
 
     private fun inputText(id: Int): String = findViewById<EditText>(id).text.toString().trim()
 

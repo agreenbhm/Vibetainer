@@ -73,5 +73,11 @@
         <activity
             android:name=".ui.YamlViewerActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.ConfigsListActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.ConfigDetailActivity"
+            android:exported="false" />
     </application>
 </manifest>

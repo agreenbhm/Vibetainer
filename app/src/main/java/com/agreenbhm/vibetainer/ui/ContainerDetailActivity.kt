@@ -137,6 +137,37 @@ class ContainerDetailActivity : AppCompatActivity() {
                     }
                     txtAffinity.visibility = if (txtAffinity.text.isNullOrBlank()) View.GONE else View.VISIBLE
 
+                    // Show mounts (if any)
+                    val mountsContainer = findViewById<android.widget.LinearLayout>(R.id.container_mounts)
+                    mountsContainer.removeAllViews()
+                    val mounts = insp.Mounts ?: emptyList()
+                    if (mounts.isEmpty()) {
+                        val tv = TextView(this@ContainerDetailActivity)
+                        tv.text = "No mounts"
+                        mountsContainer.addView(tv)
+                    } else {
+                        for (m in mounts) {
+                            val row = layoutInflater.inflate(android.R.layout.simple_list_item_2, mountsContainer, false)
+                            val title = row.findViewById<TextView>(android.R.id.text1)
+                            val subtitle = row.findViewById<TextView>(android.R.id.text2)
+                            val src = m.Source ?: ""
+                            val tgt = m.Target ?: m.Destination ?: ""
+                            val typ = m.Type ?: ""
+                            if (typ.equals("volume", ignoreCase = true)) {
+                                title.text = "Volume: $src → $tgt"
+                                val driver = m.VolumeOptions?.DriverConfig?.Name ?: ""
+                                val opts = m.VolumeOptions?.DriverConfig?.Options?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
+                                val labels = m.VolumeOptions?.Labels?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
+                                val parts = listOfNotNull(if (driver.isNotBlank()) "driver=$driver" else null, if (opts.isNotBlank()) opts else null, if (labels.isNotBlank()) labels else null)
+                                subtitle.text = parts.joinToString(" • ")
+                            } else {
+                                title.text = "Bind: $src → $tgt"
+                                subtitle.text = "Type: $typ"
+                            }
+                            mountsContainer.addView(row)
+                        }
+                    }
+
                     // Fetch a snapshot of recent logs
                     val tail = tails[spinnerTail.selectedItemPosition]
                     val logsBody = withContext(Dispatchers.IO) {
