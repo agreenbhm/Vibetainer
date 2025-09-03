@@ -184,8 +184,9 @@ private fun ServicesListActivity.showUpdateDialog(
 }
 
 class SimpleTextAdapter : RecyclerView.Adapter<TextVH>() {
-    private val items = mutableListOf<String>()
-    fun submit(list: List<String>) { items.clear(); items.addAll(list); notifyDataSetChanged() }
+    private val items = mutableListOf<Pair<String, String?>>()
+    fun submit(list: List<String>) { items.clear(); items.addAll(list.map { it to null }); notifyDataSetChanged() }
+    fun submitWithSubtitle(list: List<Pair<String, String?>>) { items.clear(); items.addAll(list); notifyDataSetChanged() }
     override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): TextVH {
         val view = android.view.LayoutInflater.from(parent.context).inflate(R.layout.item_simple_text, parent, false)
         return TextVH(view)
@@ -196,5 +197,14 @@ class SimpleTextAdapter : RecyclerView.Adapter<TextVH>() {
 
 class TextVH(itemView: android.view.View) : RecyclerView.ViewHolder(itemView) {
     private val title = itemView.findViewById<android.widget.TextView>(R.id.text_title)
-    fun bind(text: String) { title.text = text }
+    private val subtitle = itemView.findViewById<android.widget.TextView>(R.id.text_subtitle)
+    fun bind(text: Pair<String, String?>) {
+        title.text = text.first
+        if (!text.second.isNullOrBlank()) {
+            subtitle.visibility = android.view.View.VISIBLE
+            subtitle.text = text.second
+        } else {
+            subtitle.visibility = android.view.View.GONE
+        }
+    }
 }

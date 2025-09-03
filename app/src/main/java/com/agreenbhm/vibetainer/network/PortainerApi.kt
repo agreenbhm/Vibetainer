@@ -174,6 +174,22 @@ interface PortainerService {
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     ): VolumesResponse
 
+    // Filtered volumes using Docker API filters (e.g. filters={"dangling":["true"]})
+    @GET("api/endpoints/{endpointId}/docker/volumes")
+    suspend fun listVolumesFiltered(
+        @Path("endpointId") endpointId: Int,
+        @Query("filters") filters: String,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): VolumesResponse
+
+    @retrofit2.http.DELETE("api/endpoints/{endpointId}/docker/volumes/{name}")
+    suspend fun deleteVolume(
+        @Path("endpointId") endpointId: Int,
+        @Path("name") name: String,
+        @Query("force") force: Int = 1,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): retrofit2.Response<Unit>
+
     // Prune unused volumes (Docker API: POST /volumes/prune)
     @POST("api/endpoints/{endpointId}/docker/volumes/prune")
     suspend fun pruneVolumes(
@@ -292,8 +308,26 @@ data class VolumesResponse(
 
 
 data class Volume(
-    val Name: String?
-)
+    @SerializedName("Name") val Name: String?,
+    @SerializedName("Portainer") val portainer: Map<String, Any>?
+){
+    val nodeName: String?
+        get() = (portainer?.get("Agent") as? Map<*, *>)?.get("NodeName") as? String
+    val isUnused: Boolean
+        get() {
+            // Try common Portainer/Docker usage fields
+            val usage = portainer?.get("UsageData") as? Map<*, *>
+            val refCount = usage?.get("RefCount") as? Number
+            if (refCount != null) return refCount.toLong() == 0L
+            val usage2 = portainer?.get("Usage") as? Map<*, *>
+            val refs = usage2?.get("RefCount") as? Number
+            if (refs != null) return refs.toLong() == 0L
+            // Fallback: check top-level portainer flag
+            val unusedFlag = portainer?.get("Unused") as? Boolean
+            if (unusedFlag != null) return unusedFlag
+            return false
+        }
+}
 
 // Prune request/response models
 data class VolumePruneRequest(

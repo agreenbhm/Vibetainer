@@ -6,11 +6,6 @@
         android:icon="@android:drawable/ic_menu_delete"
         android:showAsAction="never" />
     <item
-        android:id="@+id/action_delete_all_unused"
-        android:title="Delete all unused"
-        android:icon="@android:drawable/ic_menu_delete"
-        android:showAsAction="never" />
-    <item
         android:id="@+id/action_prune_images"
         android:title="Prune unused images"
         android:icon="@android:drawable/ic_menu_delete"

@@ -61,12 +61,11 @@ class NodeImagesActivity : AppCompatActivity() {
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
         lifecycleScope.launch {
             try {
-                val usedDeferred = async { runCatching { api.listEnvironmentImages(endpointId, true) }.getOrDefault(emptyList()) }
-                val unusedDeferred = async { runCatching { api.listEnvironmentImages(endpointId, false) }.getOrDefault(emptyList()) }
-                val used = usedDeferred.await()
-                val unused = unusedDeferred.await()
-                val combined: List<EnvironmentImage> = (used + unused)
-                adapter.submitList(combined.map { ImageListItem(it) })
+                // Single call that returns used flag for each image
+                val resp = runCatching { api.listEnvironmentImages(endpointId, true) }.getOrDefault(emptyList())
+                val agentTarget = intent.getStringExtra("agent_target")
+                val filtered = if (!agentTarget.isNullOrBlank()) resp.filter { it.nodeName == agentTarget } else resp
+                adapter.submitList(filtered.map { ImageListItem(it) })
             } catch (e: Exception) {
                 Snackbar.make(recycler, "Failed: ${e.message}", Snackbar.LENGTH_LONG).show()
             } finally {
@@ -84,7 +83,6 @@ class NodeImagesActivity : AppCompatActivity() {
         when (item.itemId) {
             R.id.action_prune_images -> { confirmAndPruneImages(); return true }
             R.id.action_delete_selected -> { deleteSelected(); return true }
-            R.id.action_delete_all_unused -> { deleteAllUnused(); return true }
             android.R.id.home -> { finish(); return true }
         }
         return super.onOptionsItemSelected(item)
@@ -177,7 +175,9 @@ class NodeImagesActivity : AppCompatActivity() {
                 dlg.show()
                 lifecycleScope.launch {
                     try {
-                        val unused = api.listEnvironmentImages(endpointId, false)
+                        // get usage info and delete those marked unused
+                        val all = api.listEnvironmentImages(endpointId, true)
+                        val unused = all.filter { it.used == false }
                         var success = 0
                         for (it in unused) {
                             try {
