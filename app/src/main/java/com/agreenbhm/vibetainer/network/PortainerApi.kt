@@ -205,6 +205,26 @@ interface PortainerService {
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     ): retrofit2.Response<Unit>
 
+    @GET("api/endpoints/{endpointId}/docker/networks")
+    suspend fun listNetworks(
+        @Path("endpointId") endpointId: Int,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): List<NetworkSummary>
+
+    @GET("api/endpoints/{endpointId}/docker/networks/{id}")
+    suspend fun inspectNetwork(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): NetworkSummary
+
+    @retrofit2.http.DELETE("api/endpoints/{endpointId}/docker/networks/{id}")
+    suspend fun deleteNetwork(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): retrofit2.Response<Unit>
+
     @GET("api/endpoints/{endpointId}/docker/volumes")
     suspend fun listVolumes(
         @Path("endpointId") endpointId: Int,
@@ -344,6 +364,46 @@ data class VolumesResponse(
 )
 
 
+data class NetworkSummary(
+    @SerializedName("Name") val Name: String?,
+    @SerializedName("Id") val Id: String?,
+    @SerializedName("Driver") val Driver: String?,
+    @SerializedName("Scope") val Scope: String?,
+    @SerializedName("Attachable") val Attachable: Boolean?,
+    @SerializedName("EnableIPv6") val EnableIPv6: Boolean?,
+    @SerializedName("Internal") val Internal: Boolean?,
+    @SerializedName("Ingress") val Ingress: Boolean?,
+    @SerializedName("Created") val Created: String?,
+    @SerializedName("Options") val Options: Map<String, String>?,
+    @SerializedName("Labels") val Labels: Map<String, String>?,
+    @SerializedName("Containers") val Containers: Map<String, NetworkContainer>?,
+    @SerializedName("IPAM") val IPAM: NetworkIPAM?
+) {
+    // Helper to get node name for local networks
+    val nodeName: String?
+        get() = Options?.get("com.docker.network.bridge.name") 
+            ?: Labels?.get("com.docker.swarm.node.name")
+            ?: Labels?.get("com.docker.stack.namespace")
+}
+
+data class NetworkIPAM(
+    @SerializedName("Driver") val Driver: String?,
+    @SerializedName("Config") val Config: List<NetworkIPAMConfig>?
+)
+
+data class NetworkIPAMConfig(
+    @SerializedName("Subnet") val Subnet: String?,
+    @SerializedName("Gateway") val Gateway: String?
+)
+
+data class NetworkContainer(
+    @SerializedName("Name") val Name: String?,
+    @SerializedName("EndpointID") val EndpointID: String?,
+    @SerializedName("MacAddress") val MacAddress: String?,
+    @SerializedName("IPv4Address") val IPv4Address: String?,
+    @SerializedName("IPv6Address") val IPv6Address: String?
+)
+
 data class Volume(
     @SerializedName("Name") val Name: String?,
     @SerializedName("Portainer") val portainer: Map<String, Any>?
@@ -436,7 +496,12 @@ data class ContainerInspect(
     val Name: String?,
     val Image: String?,
     val State: ContainerState?,
-    val Mounts: List<ContainerMount>? = null
+    val Mounts: List<ContainerMount>? = null,
+    val Config: ContainerConfig? = null
+)
+
+data class ContainerConfig(
+    val Image: String?
 )
 
 data class ContainerMount(

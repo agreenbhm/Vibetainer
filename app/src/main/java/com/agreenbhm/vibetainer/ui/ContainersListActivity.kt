@@ -61,7 +61,7 @@ class ContainersListActivity : AppCompatActivity() {
                 c.Image.orEmpty().matches(Regex("[a-f0-9]{64}")) -> ""
                 else -> c.Image.orEmpty().substringBefore('@')
             }
-            i.putExtra(ContainerDetailActivity.EXTRA_IMAGE_NAME, imageName)
+            // Note: Image name now fetched dynamically in ContainerDetailActivity
             c.Labels?.get("com.docker.swarm.service.name")?.let { i.putExtra(ContainerDetailActivity.EXTRA_SERVICE_NAME, it) }
             c.Labels?.get("com.docker.stack.namespace")?.let { i.putExtra(ContainerDetailActivity.EXTRA_STACK_NAME, it) }
             startActivity(i)

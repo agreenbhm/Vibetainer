@@ -52,7 +52,6 @@ class ContainerDetailActivity : AppCompatActivity() {
 
         val endpointId = intent.getIntExtra(EXTRA_ENDPOINT_ID, -1)
         val containerId = intent.getStringExtra(EXTRA_CONTAINER_ID) ?: return finish()
-        val imageName = intent.getStringExtra(EXTRA_IMAGE_NAME) ?: ""
         agentTarget = intent.getStringExtra(EXTRA_AGENT_TARGET)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_container)
@@ -138,7 +137,6 @@ class ContainerDetailActivity : AppCompatActivity() {
     private fun refresh(reset: Boolean = false) {
         val endpointId = intent.getIntExtra(EXTRA_ENDPOINT_ID, -1)
         val containerId = intent.getStringExtra(EXTRA_CONTAINER_ID) ?: return
-        val imageName = intent.getStringExtra(EXTRA_IMAGE_NAME) ?: ""
         val prefs = Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
         val swipe = findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe_container)
@@ -164,7 +162,7 @@ class ContainerDetailActivity : AppCompatActivity() {
                 toolbar.title = nm
                 toolbar.subtitle = agentTarget
                 findViewById<TextView>(R.id.text_container_name).text = nm
-                findViewById<TextView>(R.id.text_container_image).text = "Image: ${imageName}"
+                findViewById<TextView>(R.id.text_container_image).text = "Image: ${cleanImageName(insp.Config?.Image ?: insp.Image)}"
                 val status = insp.State?.Status ?: "unknown"
                 findViewById<TextView>(R.id.text_container_status).text = "Status: ${status}"
 
@@ -297,5 +295,26 @@ class ContainerDetailActivity : AppCompatActivity() {
             }
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    private fun cleanImageName(image: String?): String {
+        if (image.isNullOrBlank()) return "Unknown"
+        
+        // Remove digest suffix if present (name@sha256:...)
+        val cleanedImage = if (image.contains('@')) {
+            image.substringBefore('@')
+        } else {
+            image
+        }
+        
+        return when {
+            // Hide pure SHA256 references (sha256:abc123...)
+            cleanedImage.startsWith("sha256:") -> "Unknown"
+            // Hide raw 64-character hex strings
+            cleanedImage.matches(Regex("^[a-f0-9]{64}$")) -> "Unknown"
+            // Return the clean image name
+            cleanedImage.isNotBlank() -> cleanedImage
+            else -> "Unknown"
+        }
     }
 }

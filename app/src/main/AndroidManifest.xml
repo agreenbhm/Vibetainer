@@ -79,5 +79,11 @@
         <activity
             android:name=".ui.ConfigDetailActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.NetworksListActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.NetworkDetailActivity"
+            android:exported="false" />
     </application>
 </manifest>

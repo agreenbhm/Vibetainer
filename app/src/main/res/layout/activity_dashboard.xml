@@ -217,6 +217,33 @@
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 
+                <!-- Networks card -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/card_networks"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    card_view:cardCornerRadius="12dp"
+                    card_view:cardUseCompatPadding="true">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="16dp">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Networks"
+                            android:textSize="18sp" />
+                        <TextView
+                            android:id="@+id/text_networks_count"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="-" />
+                    </LinearLayout>
+                </androidx.cardview.widget.CardView>
+
                 <!-- Configs card -->
                 <androidx.cardview.widget.CardView
                     android:id="@+id/card_configs"
