@@ -47,15 +47,13 @@ class ContainerVH(
     private val onEnterSelection: (() -> Unit)? = null
 ) : RecyclerView.ViewHolder(itemView) {
     private val name = itemView.findViewById<TextView>(R.id.text_container_name)
-    private val image = itemView.findViewById<TextView>(R.id.text_container_image)
     private val affinity = itemView.findViewById<TextView>(R.id.text_container_affinity)
     private val stateChip = itemView.findViewById<Chip>(R.id.chip_container_state)
     private val checkbox = itemView.findViewById<android.widget.CheckBox>(R.id.check_select_container)
     fun bind(item: ContainerSummary, selectionEnabled: Boolean, isSelected: Boolean) {
         val firstName = item.Names?.firstOrNull() ?: item.Id.take(12)
-        name.text = firstName
+        name.text = firstName.removePrefix("/")
         val subtitle = subtitleProvider?.invoke(item)
-        image.text = subtitle ?: prettyImage(item.Image)
         val st = (item.State ?: "").lowercase()
         stateChip.text = st.ifEmpty { "unknown" }
         val color = when (st) {
@@ -72,9 +70,11 @@ class ContainerVH(
         val svc = item.Labels?.get("com.docker.swarm.service.name").orEmpty()
         val stack = item.Labels?.get("com.docker.stack.namespace").orEmpty()
         affinity.text = buildString {
-            if (svc.isNotBlank()) append("svc: ").append(svc)
+            if ((subtitle ?: prettyImage(item.Image)).isNotBlank()) append("Image: ").append(subtitle ?: prettyImage(item.Image))
+            if ((subtitle ?: prettyImage(item.Image)).isNotBlank() && stack.isNotBlank()) append(" • ")
+            if (svc.isNotBlank()) append("Service: ").append(svc)
             if (svc.isNotBlank() && stack.isNotBlank()) append(" • ")
-            if (stack.isNotBlank()) append("stack: ").append(stack)
+            if (stack.isNotBlank()) append("Stack: ").append(stack)
         }
         affinity.visibility = if (affinity.text.isNullOrBlank()) View.GONE else View.VISIBLE
         itemView.setOnLongClickListener {

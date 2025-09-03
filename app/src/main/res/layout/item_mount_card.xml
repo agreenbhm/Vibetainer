@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:card_view="http://schemas.android.com/apk/res-auto"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    card_view:cardCornerRadius="8dp"
+    card_view:cardUseCompatPadding="true"
+    card_view:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:id="@+id/mount_row_source"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/mount_label_source"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Source: "
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/mount_source"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/mount_row_target"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+
+            <TextView
+                android:id="@+id/mount_label_target"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Target: "
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/mount_target"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/mount_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:layout_marginTop="8dp"
+            android:text="details" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/mount_type_chip"
+            style="@style/Widget.Material3.Chip.Assist.Elevated"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="type" />
+
+    </LinearLayout>
+
+</androidx.cardview.widget.CardView>

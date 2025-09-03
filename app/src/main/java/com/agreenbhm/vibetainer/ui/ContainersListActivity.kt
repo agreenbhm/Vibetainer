@@ -55,6 +55,13 @@ class ContainersListActivity : AppCompatActivity() {
             val i = Intent(this, ContainerDetailActivity::class.java)
             i.putExtra(ContainerDetailActivity.EXTRA_ENDPOINT_ID, endpointId)
             i.putExtra(ContainerDetailActivity.EXTRA_CONTAINER_ID, c.Id)
+            val imageName = when {
+                c.Image.orEmpty().isBlank() -> ""
+                c.Image.orEmpty().startsWith("sha256:") -> ""
+                c.Image.orEmpty().matches(Regex("[a-f0-9]{64}")) -> ""
+                else -> c.Image.orEmpty().substringBefore('@')
+            }
+            i.putExtra(ContainerDetailActivity.EXTRA_IMAGE_NAME, imageName)
             c.Labels?.get("com.docker.swarm.service.name")?.let { i.putExtra(ContainerDetailActivity.EXTRA_SERVICE_NAME, it) }
             c.Labels?.get("com.docker.stack.namespace")?.let { i.putExtra(ContainerDetailActivity.EXTRA_STACK_NAME, it) }
             startActivity(i)
@@ -130,7 +137,7 @@ class ContainersListActivity : AppCompatActivity() {
         touchHelper.attachToRecyclerView(recycler)
 
         fun displayName(c: com.agreenbhm.vibetainer.network.ContainerSummary): String =
-            c.Names?.firstOrNull() ?: c.Id.take(12)
+            c.Names?.firstOrNull()?.removePrefix("/") ?: c.Id.take(12)
 
         fun applyFilter() {
             val sel = when {

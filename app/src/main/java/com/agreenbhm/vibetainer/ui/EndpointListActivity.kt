@@ -40,6 +40,7 @@ class EndpointListActivity : AppCompatActivity() {
         setSupportActionBar(toolbar)
         // No overflow menu on this screen
         supportActionBar?.title = "Environments"
+        supportActionBar?.subtitle = prefs.baseUrl()
         com.agreenbhm.vibetainer.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.recycler_endpoints))
 
         val recycler = findViewById<RecyclerView>(R.id.recycler_endpoints)

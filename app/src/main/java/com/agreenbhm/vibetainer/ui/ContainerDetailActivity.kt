@@ -10,17 +10,19 @@ import android.view.View
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
- 
+
 import com.agreenbhm.vibetainer.R
 import com.agreenbhm.vibetainer.network.PortainerApi
 import com.agreenbhm.vibetainer.util.Prefs
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.materialswitch.MaterialSwitch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
  
 
 class ContainerDetailActivity : AppCompatActivity() {
+    private var agentTarget: String? = null
     // No overflow menu on this screen
     private fun demuxDockerLogs(bytes: ByteArray): String {
         // Docker stdcopy: frame = 8-byte header + payload; header: [stream(1)][000][len(4, BE)]
@@ -50,7 +52,8 @@ class ContainerDetailActivity : AppCompatActivity() {
 
         val endpointId = intent.getIntExtra(EXTRA_ENDPOINT_ID, -1)
         val containerId = intent.getStringExtra(EXTRA_CONTAINER_ID) ?: return finish()
-        var agentTarget: String? = intent.getStringExtra(EXTRA_AGENT_TARGET)
+        val imageName = intent.getStringExtra(EXTRA_IMAGE_NAME) ?: ""
+        agentTarget = intent.getStringExtra(EXTRA_AGENT_TARGET)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_container)
         setSupportActionBar(toolbar)
@@ -67,7 +70,7 @@ class ContainerDetailActivity : AppCompatActivity() {
         val switchTimestamps = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switch_timestamps)
         val switchAuto = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switch_autorefresh)
         val switchFollow = findViewById<com.google.android.material.materialswitch.MaterialSwitch>(R.id.switch_follow)
-        val buttonRefresh = findViewById<Button>(R.id.button_refresh_logs)
+        val swipe = findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe_container)
         val scroll = findViewById<android.widget.ScrollView>(R.id.scroll_container)
         var userTouching = false
         var followLogs = false // toggled via switch or user scroll-to-bottom
@@ -88,8 +91,7 @@ class ContainerDetailActivity : AppCompatActivity() {
                 if (!atBottom && switchFollow.isChecked) switchFollow.isChecked = false
             }
         }
-        val btnStart = findViewById<Button>(R.id.button_start)
-        val btnStop = findViewById<Button>(R.id.button_stop)
+        // start/stop buttons moved to the action bar menu
 
         val prefs = Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
@@ -103,127 +105,11 @@ class ContainerDetailActivity : AppCompatActivity() {
         switchTimestamps.isChecked = prefs.logsTimestamps()
         switchAuto.isChecked = prefs.logsAutoRefresh()
 
-        fun refresh(reset: Boolean = false) {
-            lifecycleScope.launch {
-                try {
-                    // Resolve agent target as node hostname if not provided
-                    if (agentTarget.isNullOrBlank()) {
-                        runCatching {
-                            val containers = withContext(Dispatchers.IO) { api.listContainers(endpointId, true, null) }
-                            val match = containers.firstOrNull { it.Id.startsWith(containerId) or containerId.startsWith(it.Id) or (it.Id == containerId) }
-                            val nodeId = match?.Labels?.get("com.docker.swarm.node.id")
-                            if (!nodeId.isNullOrBlank()) {
-                                val nodes = withContext(Dispatchers.IO) { api.listNodes(endpointId) }
-                                val node = nodes.firstOrNull { it.ID == nodeId }
-                                agentTarget = node?.Description?.Hostname ?: agentTarget
-                            }
-                        }
-                    }
-                    val insp = withContext(Dispatchers.IO) { api.containerInspect(endpointId, containerId, agentTarget) }
-                    val nm = insp.Name?.removePrefix("/") ?: containerId.take(12)
-                    toolbar.title = nm
-                    txtName.text = nm
-                    txtImage.text = insp.Image ?: ""
-                    val status = insp.State?.Status ?: "unknown"
-                    txtStatus.text = status
+        // start/stop moved to menu actions
 
-                    // Show service/stack from intent extras if provided
-                    val svc = intent.getStringExtra(EXTRA_SERVICE_NAME).orEmpty()
-                    val stack = intent.getStringExtra(EXTRA_STACK_NAME).orEmpty()
-                    txtAffinity.text = buildString {
-                        if (svc.isNotBlank()) append("Service: ").append(svc)
-                        if (svc.isNotBlank() && stack.isNotBlank()) append(" • ")
-                        if (stack.isNotBlank()) append("Stack: ").append(stack)
-                    }
-                    txtAffinity.visibility = if (txtAffinity.text.isNullOrBlank()) View.GONE else View.VISIBLE
-
-                    // Show mounts (if any)
-                    val mountsContainer = findViewById<android.widget.LinearLayout>(R.id.container_mounts)
-                    mountsContainer.removeAllViews()
-                    val mounts = insp.Mounts ?: emptyList()
-                    if (mounts.isEmpty()) {
-                        val tv = TextView(this@ContainerDetailActivity)
-                        tv.text = "No mounts"
-                        mountsContainer.addView(tv)
-                    } else {
-                        for (m in mounts) {
-                            val row = layoutInflater.inflate(android.R.layout.simple_list_item_2, mountsContainer, false)
-                            val title = row.findViewById<TextView>(android.R.id.text1)
-                            val subtitle = row.findViewById<TextView>(android.R.id.text2)
-                            val src = m.Source ?: ""
-                            val tgt = m.Target ?: m.Destination ?: ""
-                            val typ = m.Type ?: ""
-                            if (typ.equals("volume", ignoreCase = true)) {
-                                title.text = "Volume: $src → $tgt"
-                                val driver = m.VolumeOptions?.DriverConfig?.Name ?: ""
-                                val opts = m.VolumeOptions?.DriverConfig?.Options?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
-                                val labels = m.VolumeOptions?.Labels?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
-                                val parts = listOfNotNull(if (driver.isNotBlank()) "driver=$driver" else null, if (opts.isNotBlank()) opts else null, if (labels.isNotBlank()) labels else null)
-                                subtitle.text = parts.joinToString(" • ")
-                            } else {
-                                title.text = "Bind: $src → $tgt"
-                                subtitle.text = "Type: $typ"
-                            }
-                            mountsContainer.addView(row)
-                        }
-                    }
-
-                    // Fetch a snapshot of recent logs
-                    val tail = tails[spinnerTail.selectedItemPosition]
-                    val logsBody = withContext(Dispatchers.IO) {
-                        runCatching {
-                            api.containerLogs(
-                                endpointId = endpointId,
-                                id = containerId,
-                                stdout = 1,
-                                stderr = 1,
-                                tail = tail,
-                                timestamps = if (switchTimestamps.isChecked) 1 else 0,
-                                follow = 0,
-                                agentTarget = agentTarget
-                            )
-                        }.getOrNull()
-                    }
-                    val bytes = withContext(Dispatchers.IO) { logsBody?.bytes() }
-                    val snapshot = if (bytes != null) demuxDockerLogs(bytes) else ""
-                    // Snapshot model: replace content each refresh to avoid duplicates
-                    txtLogs.text = snapshot
-                    if (followLogs) {
-                        // Ensure we scroll to bottom before this frame is drawn to avoid mid-frame jumps
-                        val vto = scroll.viewTreeObserver
-                        val listener = object : android.view.ViewTreeObserver.OnPreDrawListener {
-                            override fun onPreDraw(): Boolean {
-                                scroll.viewTreeObserver.removeOnPreDrawListener(this)
-                                scroll.fullScroll(View.FOCUS_DOWN)
-                                return true
-                            }
-                        }
-                        vto.addOnPreDrawListener(listener)
-                    }
-                } catch (e: Exception) {
-                    val msg = e.message ?: e.javaClass.simpleName
-                    txtStatus.text = "Error: ${msg}"
-                }
-            }
-        }
-
-        
-
-        btnStart.setOnClickListener {
-            lifecycleScope.launch {
-                withContext(Dispatchers.IO) { runCatching { api.containerStart(endpointId, containerId, agentTarget) } }
-                refresh()
-            }
-        }
-        btnStop.setOnClickListener {
-            lifecycleScope.launch {
-                withContext(Dispatchers.IO) { runCatching { api.containerStop(endpointId, containerId, agentTarget) } }
-                refresh()
-            }
-        }
-
+        // Pull-to-refresh support
+        swipe.setOnRefreshListener { refresh(true) }
         refresh()
-        buttonRefresh.setOnClickListener { refresh(false) }
         switchTimestamps.setOnCheckedChangeListener { _, isChecked ->
             prefs.setLogsTimestamps(isChecked)
             if (!switchAuto.isChecked) refresh(true)
@@ -249,13 +135,167 @@ class ContainerDetailActivity : AppCompatActivity() {
 
         // Streaming removed per request; using snapshot only
     }
+    private fun refresh(reset: Boolean = false) {
+        val endpointId = intent.getIntExtra(EXTRA_ENDPOINT_ID, -1)
+        val containerId = intent.getStringExtra(EXTRA_CONTAINER_ID) ?: return
+        val imageName = intent.getStringExtra(EXTRA_IMAGE_NAME) ?: ""
+        val prefs = Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        val swipe = findViewById<androidx.swiperefreshlayout.widget.SwipeRefreshLayout>(R.id.swipe_container)
+        swipe.isRefreshing = true
+        lifecycleScope.launch {
+            try {
+                if (agentTarget.isNullOrBlank()) {
+                    runCatching {
+                        val containers = withContext(Dispatchers.IO) { api.listContainers(endpointId, true, null) }
+                        val match = containers.firstOrNull { it.Id.startsWith(containerId) or containerId.startsWith(it.Id) or (it.Id == containerId) }
+                        val nodeId = match?.Labels?.get("com.docker.swarm.node.id")
+                        if (!nodeId.isNullOrBlank()) {
+                            val nodes = withContext(Dispatchers.IO) { api.listNodes(endpointId) }
+                            val node = nodes.firstOrNull { it.ID == nodeId }
+                            agentTarget = node?.Description?.Hostname ?: agentTarget
+                        }
+                    }
+                }
 
-    // Streaming helpers removed; using snapshot logs in refresh()
+                val insp = withContext(Dispatchers.IO) { api.containerInspect(endpointId, containerId, agentTarget) }
+                val nm = insp.Name?.removePrefix("/") ?: containerId.take(12)
+                val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_container)
+                toolbar.title = nm
+                toolbar.subtitle = agentTarget
+                findViewById<TextView>(R.id.text_container_name).text = nm
+                findViewById<TextView>(R.id.text_container_image).text = "Image: ${imageName}"
+                val status = insp.State?.Status ?: "unknown"
+                findViewById<TextView>(R.id.text_container_status).text = "Status: ${status}"
+
+                val svc = intent.getStringExtra(EXTRA_SERVICE_NAME).orEmpty()
+                val stack = intent.getStringExtra(EXTRA_STACK_NAME).orEmpty()
+                val txtAffinity = findViewById<TextView>(R.id.text_container_affinity)
+                txtAffinity.text = buildString {
+                    if (svc.isNotBlank()) append("Service: ").append(svc)
+                    if (svc.isNotBlank() && stack.isNotBlank()) append("\n")
+                    if (stack.isNotBlank()) append("Stack: ").append(stack)
+                }
+                txtAffinity.visibility = if (txtAffinity.text.isNullOrBlank()) View.GONE else View.VISIBLE
+
+                val mountsContainer = findViewById<android.widget.LinearLayout>(R.id.container_mounts)
+                mountsContainer.removeAllViews()
+                val mounts = insp.Mounts ?: emptyList()
+                if (mounts.isEmpty()) {
+                    val tv = TextView(this@ContainerDetailActivity)
+                    tv.text = "No mounts"
+                    mountsContainer.addView(tv)
+                } else {
+                    for (m in mounts.sortedBy { it.Destination }) {
+                        val card = layoutInflater.inflate(R.layout.item_mount_card, mountsContainer, false)
+                        val sourceRow = card.findViewById<android.view.View>(R.id.mount_row_source)
+                        val targetRow = card.findViewById<android.view.View>(R.id.mount_row_target)
+                        val titleSrc = card.findViewById<TextView>(R.id.mount_source)
+                        val titleTgt = card.findViewById<TextView>(R.id.mount_target)
+                        val subtitle = card.findViewById<TextView>(R.id.mount_subtitle)
+                        val chip = card.findViewById<com.google.android.material.chip.Chip>(R.id.mount_type_chip)
+                        val src = m.Source ?: ""
+                        val tgt = m.Target ?: m.Destination ?: ""
+                        val typ = m.Type ?: ""
+                        titleSrc.text = src
+                        titleTgt.text = tgt
+                        targetRow.visibility = if (tgt.isNotBlank()) View.VISIBLE else View.GONE
+                        chip.text = typ.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                        if (typ.equals("volume", ignoreCase = true)) {
+                            val driver = m.VolumeOptions?.DriverConfig?.Name ?: ""
+                            val opts = m.VolumeOptions?.DriverConfig?.Options?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
+                            val labels = m.VolumeOptions?.Labels?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
+                            val parts = listOfNotNull(if (driver.isNotBlank()) "driver=$driver" else null, if (opts.isNotBlank()) opts else null, if (labels.isNotBlank()) labels else null)
+                            subtitle.text = parts.joinToString(" • ")
+                            subtitle.visibility = if (subtitle.text.isNullOrBlank()) View.GONE else View.VISIBLE
+                        } else {
+                            subtitle.text = ""
+                            subtitle.visibility = View.GONE
+                        }
+                        mountsContainer.addView(card)
+                    }
+                }
+
+                val tails = listOf(50, 200, 1000)
+                val spinnerTail = findViewById<Spinner>(R.id.spinner_tail)
+                val switchTimestamps = findViewById<MaterialSwitch>(R.id.switch_timestamps)
+                val switchAuto = findViewById<MaterialSwitch>(R.id.switch_autorefresh)
+                val switchFollow = findViewById<MaterialSwitch>(R.id.switch_follow)
+                val scroll = findViewById<android.widget.ScrollView>(R.id.scroll_container)
+                val tail = tails[spinnerTail.selectedItemPosition]
+                val logsBody = withContext(Dispatchers.IO) {
+                    runCatching {
+                        api.containerLogs(
+                            endpointId = endpointId,
+                            id = containerId,
+                            stdout = 1,
+                            stderr = 1,
+                            tail = tail,
+                            timestamps = if (switchTimestamps.isChecked) 1 else 0,
+                            follow = 0,
+                            agentTarget = agentTarget
+                        )
+                    }.getOrNull()
+                }
+                val bytes = withContext(Dispatchers.IO) { logsBody?.bytes() }
+                val snapshot = if (bytes != null) demuxDockerLogs(bytes) else ""
+                findViewById<TextView>(R.id.text_container_logs).text = snapshot
+                if (switchFollow.isChecked) {
+                    val vto = scroll.viewTreeObserver
+                    val listener = object : android.view.ViewTreeObserver.OnPreDrawListener {
+                        override fun onPreDraw(): Boolean {
+                            scroll.viewTreeObserver.removeOnPreDrawListener(this)
+                            scroll.fullScroll(View.FOCUS_DOWN)
+                            return true
+                        }
+                    }
+                    vto.addOnPreDrawListener(listener)
+                }
+            } catch (e: Exception) {
+                val msg = e.message ?: e.javaClass.simpleName
+                findViewById<TextView>(R.id.text_container_status).text = "Error: ${msg}"
+            } finally {
+                swipe.isRefreshing = false
+            }
+        }
+    }
     companion object {
         const val EXTRA_ENDPOINT_ID = "endpoint_id"
         const val EXTRA_CONTAINER_ID = "container_id"
         const val EXTRA_AGENT_TARGET = "agent_target"
         const val EXTRA_SERVICE_NAME = "service_name"
         const val EXTRA_STACK_NAME = "stack_name"
+        const val EXTRA_IMAGE_NAME = "image_name"
+    }
+
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_container_detail, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
+        val endpointId = intent.getIntExtra(EXTRA_ENDPOINT_ID, -1)
+        val containerId = intent.getStringExtra(EXTRA_CONTAINER_ID) ?: return super.onOptionsItemSelected(item)
+        when (item.itemId) {
+            R.id.action_start -> {
+                lifecycleScope.launch {
+                    val prefs = Prefs(this@ContainerDetailActivity)
+                    val api = PortainerApi.create(this@ContainerDetailActivity, prefs.baseUrl(), prefs.token())
+                    withContext(Dispatchers.IO) { runCatching { api.containerStart(endpointId, containerId, agentTarget) } }
+                    refresh()
+                }
+                return true
+            }
+            R.id.action_stop -> {
+                lifecycleScope.launch {
+                    val prefs = Prefs(this@ContainerDetailActivity)
+                    val api = PortainerApi.create(this@ContainerDetailActivity, prefs.baseUrl(), prefs.token())
+                    withContext(Dispatchers.IO) { runCatching { api.containerStop(endpointId, containerId, agentTarget) } }
+                    refresh()
+                }
+                return true
+            }
+        }
+        return super.onOptionsItemSelected(item)
     }
 }

@@ -54,12 +54,12 @@
 
         <!-- Removed: header total toggle -->
 
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/switch_proxy_enabled"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Use HTTP proxy" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_proxy_enabled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Use HTTP proxy" />
 
         <!-- HTTPS proxy toggle removed; not supported by OkHttp as upstream proxy -->
 
@@ -76,12 +76,12 @@
 
         <!-- Removed explicit proxy port; include in URL if needed -->
 
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/switch_ignore_ssl"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Ignore SSL errors (trust all)" />
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switch_ignore_ssl"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Ignore SSL errors (trust all)" />
 
         <Button
             android:id="@+id/button_save_settings"

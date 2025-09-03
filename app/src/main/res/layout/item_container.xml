@@ -27,12 +27,6 @@
                 android:text="/container"
                 android:textColor="?attr/colorOnSurface"
                 android:textSize="16sp" />
-            <TextView
-                android:id="@+id/text_container_image"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="image:tag"
-                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/text_container_affinity"
