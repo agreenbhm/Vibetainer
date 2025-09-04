@@ -8,6 +8,7 @@ import androidx.lifecycle.lifecycleScope
 import com.agreenbhm.vibetainer.MainActivity
 import com.agreenbhm.vibetainer.R
 import com.agreenbhm.vibetainer.network.PortainerApi
+import com.agreenbhm.vibetainer.network.ContainerSummary
 import com.agreenbhm.vibetainer.util.Prefs
 import com.google.android.material.appbar.MaterialToolbar
 import android.view.View
@@ -17,6 +18,24 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 
 class DashboardActivity : AppCompatActivity() {
+    
+    data class CountResult(val count: Int, val isOffline: Boolean = false) {
+        companion object {
+            fun success(count: Int) = CountResult(count, false)
+            fun offline() = CountResult(0, true)
+        }
+    }
+    
+    data class ContainersResult(val containers: List<ContainerSummary>, val isOffline: Boolean = false) {
+        companion object {
+            fun success(containers: List<ContainerSummary>) = ContainersResult(containers, false)
+            fun offline() = ContainersResult(emptyList(), true)
+        }
+    }
+    
+    private fun displayCount(result: CountResult): String {
+        return if (result.isOffline) "Offline" else result.count.toString()
+    }
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
         menuInflater.inflate(R.menu.menu_main, menu)
         return true
@@ -68,33 +87,60 @@ class DashboardActivity : AppCompatActivity() {
             swipe.isRefreshing = true
             lifecycleScope.launch {
             try {
-                val nodesDeferred = async { runCatching { api.listNodes(endpointId).size }.getOrDefault(0) }
-                val containersDeferred = async { runCatching { api.listContainers(endpointId, true, null) }.getOrDefault(emptyList()) }
-                val servicesDeferred = async { runCatching { api.listServices(endpointId).size }.getOrDefault(0) }
-                val stacksDeferred = async { runCatching { api.listStacks().count { (it.EndpointId ?: -1) == endpointId } }.getOrDefault(0) }
-                val imagesDeferred = async { runCatching { api.listImages(endpointId, null).size }.getOrDefault(0) }
-                val volumesDeferred = async { runCatching { api.listVolumes(endpointId, null).Volumes?.size ?: 0 }.getOrDefault(0) }
-                val configsDeferred = async { runCatching { api.listConfigs(endpointId).size }.getOrDefault(0) }
-                val networksDeferred = async { runCatching { api.listNetworks(endpointId, null).size }.getOrDefault(0) }
+                val nodesDeferred = async { 
+                    runCatching { CountResult.success(api.listNodes(endpointId).size) }.getOrElse { CountResult.offline() }
+                }
+                val containersDeferred = async { 
+                    runCatching { ContainersResult.success(api.listContainers(endpointId, true, null)) }.getOrElse { ContainersResult.offline() }
+                }
+                val servicesDeferred = async { 
+                    runCatching { CountResult.success(api.listServices(endpointId).size) }.getOrElse { CountResult.offline() }
+                }
+                val stacksDeferred = async { 
+                    runCatching { CountResult.success(api.listStacks().count { (it.EndpointId ?: -1) == endpointId }) }.getOrElse { CountResult.offline() }
+                }
+                val imagesDeferred = async { 
+                    runCatching { CountResult.success(api.listImages(endpointId, null).size) }.getOrElse { CountResult.offline() }
+                }
+                val volumesDeferred = async { 
+                    runCatching { CountResult.success(api.listVolumes(endpointId, null).Volumes?.size ?: 0) }.getOrElse { CountResult.offline() }
+                }
+                val configsDeferred = async { 
+                    runCatching { CountResult.success(api.listConfigs(endpointId).size) }.getOrElse { CountResult.offline() }
+                }
+                val networksDeferred = async { 
+                    runCatching { CountResult.success(api.listNetworks(endpointId, null).size) }.getOrElse { CountResult.offline() }
+                }
 
                 val totalNodes = nodesDeferred.await()
-                val containersList = containersDeferred.await()
+                val containersResult = containersDeferred.await()
                 val totalServices = servicesDeferred.await()
                 val totalStacks = stacksDeferred.await()
+                val totalImages = imagesDeferred.await()
+                val totalVolumes = volumesDeferred.await()
+                val totalConfigs = configsDeferred.await()
+                val totalNetworks = networksDeferred.await()
 
-                nodesCount.text = totalNodes.toString()
-                containersCount.text = containersList.size.toString()
-               servicesCount.text = totalServices.toString()
-                imagesCount.text = imagesDeferred.await().toString()
-                volumesCount.text = volumesDeferred.await().toString()
-                configsCount.text = configsDeferred.await().toString()
-                stacksCount.text = totalStacks.toString()
-                networksCount.text = networksDeferred.await().toString()
+                nodesCount.text = displayCount(totalNodes)
+                servicesCount.text = displayCount(totalServices)
+                stacksCount.text = displayCount(totalStacks)
+                imagesCount.text = displayCount(totalImages)
+                volumesCount.text = displayCount(totalVolumes)
+                configsCount.text = displayCount(totalConfigs)
+                networksCount.text = displayCount(totalNetworks)
 
-                val runningCount = containersList.count { (it.State ?: "").equals("running", ignoreCase = true) }
-                val stoppedCount = containersList.size - runningCount
-                chipRunning.text = "Running $runningCount"
-                chipStopped.text = "Stopped $stoppedCount"
+                // Handle containers specially since we need running/stopped counts
+                if (containersResult.isOffline) {
+                    containersCount.text = "Offline"
+                    chipRunning.text = "Running: Offline"
+                    chipStopped.text = "Stopped: Offline"
+                } else {
+                    containersCount.text = containersResult.containers.size.toString()
+                    val runningCount = containersResult.containers.count { (it.State ?: "").equals("running", ignoreCase = true) }
+                    val stoppedCount = containersResult.containers.size - runningCount
+                    chipRunning.text = "Running $runningCount"
+                    chipStopped.text = "Stopped $stoppedCount"
+                }
                 supportActionBar?.title = prefs.endpointName()
                 supportActionBar?.subtitle = prefs.baseUrl()
             } catch (_: Exception) {
