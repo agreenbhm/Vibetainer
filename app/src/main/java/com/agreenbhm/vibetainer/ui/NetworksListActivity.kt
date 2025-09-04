@@ -21,9 +21,11 @@ class NetworksListActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_list_generic)
+        val prefs = Prefs(this)
 
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_list)
         toolbar.title = "Networks"
+        toolbar.subtitle = prefs.endpointName()
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { finish() }
@@ -34,7 +36,6 @@ class NetworksListActivity : AppCompatActivity() {
         val swipe = findViewById<SwipeRefreshLayout>(R.id.swipe_list)
         recycler.layoutManager = LinearLayoutManager(this)
 
-        val prefs = Prefs(this)
         val api: PortainerService = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
         val endpointId = prefs.endpointId()
 
