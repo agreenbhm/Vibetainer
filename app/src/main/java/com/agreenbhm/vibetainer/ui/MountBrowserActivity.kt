@@ -108,7 +108,7 @@ class MountBrowserActivity : AppCompatActivity() {
                 val longFormatSwitch = findViewById<MaterialSwitch>(R.id.switch_long_format)
                 val lsCommand = if (longFormatSwitch.isChecked) "ls -la" else "ls -a1"
                 val execRequest = ContainerExecRequest(
-                    Cmd = listOf("/bin/sh", "-c", "$lsCommand ${mountPath ?: "/"}; printf ---VibetainerEOF---"),
+                    Cmd = listOf("/bin/sh", "-c", "$lsCommand ${mountPath ?: "/"}; printf '%s' '---VibetainerEOF---'"),
                     AttachStdout = true,
                     AttachStderr = true
                 )
