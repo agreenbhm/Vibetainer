@@ -70,8 +70,8 @@ class MountBrowserActivity : AppCompatActivity() {
 
     private fun setupUI() {
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_mount_browser)
-        toolbar.title = mountPath ?: "Unknown Path"
-        toolbar.subtitle = if (!agentTarget.isNullOrBlank()) agentTarget else "Unknown Node"
+        supportActionBar?.title = mountPath ?: "Unknown Path"
+        supportActionBar?.subtitle = if (!agentTarget.isNullOrBlank()) agentTarget else "Unknown Node"
         
         val longFormatSwitch = findViewById<MaterialSwitch>(R.id.switch_long_format)
         longFormatSwitch.setOnCheckedChangeListener { _, _ ->

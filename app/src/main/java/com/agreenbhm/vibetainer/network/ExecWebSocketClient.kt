@@ -110,7 +110,7 @@ class ExecWebSocketClient(
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     // Don't report error 1006 as it's a normal closure when we close intentionally
-                    if (response?.code != 1006) {
+                    if (t.message != "Code 1006 is reserved and may not be used.") {
                         val errorMsg = response?.message ?: t.message ?: "WebSocket connection failed"
                         onError(errorMsg)
                     }
