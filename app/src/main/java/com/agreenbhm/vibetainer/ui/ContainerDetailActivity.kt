@@ -19,6 +19,7 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import android.content.Intent
  
 
 class ContainerDetailActivity : AppCompatActivity() {
@@ -192,10 +193,30 @@ class ContainerDetailActivity : AppCompatActivity() {
                         val titleTgt = card.findViewById<TextView>(R.id.mount_target)
                         val subtitle = card.findViewById<TextView>(R.id.mount_subtitle)
                         val chip = card.findViewById<com.google.android.material.chip.Chip>(R.id.mount_type_chip)
+                        val sourceLabelView = card.findViewById<TextView>(R.id.mount_label_source)
                         val src = m.Source ?: ""
                         val tgt = m.Target ?: m.Destination ?: ""
                         val typ = m.Type ?: ""
-                        titleSrc.text = src
+                        
+                        // Update source label based on mount type
+                        sourceLabelView.text = when {
+                            typ.equals("volume", ignoreCase = true) -> "Volume: "
+                            typ.equals("bind", ignoreCase = true) -> "Host: "
+                            typ.equals("tmpfs", ignoreCase = true) -> "Tmpfs: "
+                            else -> "Source: " // fallback for unknown types
+                        }
+                        
+                        // For volume mounts, show just the volume name
+                        titleSrc.text = if (typ.equals("volume", ignoreCase = true)) {
+                            // Extract volume name - handle both direct names and paths
+                            when {
+                                src.contains('/') -> src.substringBeforeLast("/_data").substringAfterLast("/")
+                                src.isNotBlank() -> src
+                                else -> "unnamed-volume"
+                            }
+                        } else {
+                            src
+                        }
                         titleTgt.text = tgt
                         targetRow.visibility = if (tgt.isNotBlank()) View.VISIBLE else View.GONE
                         chip.text = typ.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }

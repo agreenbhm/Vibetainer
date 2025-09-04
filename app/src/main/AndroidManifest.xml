@@ -85,5 +85,8 @@
         <activity
             android:name=".ui.NetworkDetailActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.VolumeDetailActivity"
+            android:exported="false" />
     </application>
 </manifest>

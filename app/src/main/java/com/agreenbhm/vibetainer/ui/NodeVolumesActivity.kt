@@ -20,6 +20,7 @@ import com.agreenbhm.vibetainer.network.VolumePruneRequest
 import com.agreenbhm.vibetainer.network.VolumePruneResponse
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
+import android.content.Intent
 
 class NodeVolumesActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,7 +48,15 @@ class NodeVolumesActivity : AppCompatActivity() {
         lateinit var adapter: VolumeItemAdapter
         adapter = VolumeItemAdapter({ selectionCount ->
             supportActionBar?.subtitle = if (selectionCount > 0) "Selected: $selectionCount" else defaultSubtitle
-        }, { item -> adapter.enterSelectionModeAndSelect(item) })
+        }, { item -> adapter.enterSelectionModeAndSelect(item) }) { item ->
+            // Navigate to VolumeDetailActivity
+            val intent = Intent(this, VolumeDetailActivity::class.java).apply {
+                putExtra(VolumeDetailActivity.EXTRA_ENDPOINT_ID, endpointId)
+                putExtra(VolumeDetailActivity.EXTRA_VOLUME_NAME, item.volume.Name)
+                putExtra(VolumeDetailActivity.EXTRA_AGENT_TARGET, agentTarget)
+            }
+            startActivity(intent)
+        }
         recycler.adapter = adapter
 
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())

@@ -16,7 +16,8 @@ data class VolumeListItem(val volume: Volume, val unused: Boolean? = null)
 
 class VolumeItemAdapter(
     private val onSelectionChanged: (Int) -> Unit,
-    private val onStartSelectionMode: (VolumeListItem) -> Unit
+    private val onStartSelectionMode: (VolumeListItem) -> Unit,
+    private val onItemClick: ((VolumeListItem) -> Unit)? = null
 ) : ListAdapter<VolumeListItem, VolumeItemAdapter.VH>(DIFF) {
     private val selected = mutableSetOf<String>()
     private var selectionMode = false
@@ -78,7 +79,11 @@ class VolumeItemAdapter(
         }
 
         holder.itemView.setOnClickListener {
-            if (selectionMode) holder.checkbox.isChecked = !holder.checkbox.isChecked
+            if (selectionMode) {
+                holder.checkbox.isChecked = !holder.checkbox.isChecked
+            } else {
+                onItemClick?.invoke(item)
+            }
         }
 
         holder.itemView.setOnLongClickListener { _ ->

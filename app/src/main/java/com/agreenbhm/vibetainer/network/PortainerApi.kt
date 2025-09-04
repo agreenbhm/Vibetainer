@@ -406,7 +406,9 @@ data class NetworkContainer(
 
 data class Volume(
     @SerializedName("Name") val Name: String?,
-    @SerializedName("Portainer") val portainer: Map<String, Any>?
+    @SerializedName("Portainer") val portainer: Map<String, Any>?,
+    @SerializedName("Options") val options: Map<String, Any>?,
+    @SerializedName("Driver") val driver: String?,
 ){
     val nodeName: String?
         get() = (portainer?.get("Agent") as? Map<*, *>)?.get("NodeName") as? String
