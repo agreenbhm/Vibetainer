@@ -193,6 +193,7 @@ class ContainerDetailActivity : AppCompatActivity() {
                         val titleTgt = card.findViewById<TextView>(R.id.mount_target)
                         val subtitle = card.findViewById<TextView>(R.id.mount_subtitle)
                         val chip = card.findViewById<com.google.android.material.chip.Chip>(R.id.mount_type_chip)
+                        val browseButton = card.findViewById<com.google.android.material.button.MaterialButton>(R.id.mount_browse_button)
                         val sourceLabelView = card.findViewById<TextView>(R.id.mount_label_source)
                         val src = m.Source ?: ""
                         val tgt = m.Target ?: m.Destination ?: ""
@@ -220,6 +221,16 @@ class ContainerDetailActivity : AppCompatActivity() {
                         titleTgt.text = tgt
                         targetRow.visibility = if (tgt.isNotBlank()) View.VISIBLE else View.GONE
                         chip.text = typ.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                        
+                        // Show browse button for browsable mount types
+                        val isBrowsable = typ.equals("volume", ignoreCase = true) || typ.equals("bind", ignoreCase = true)
+                        browseButton.visibility = if (isBrowsable) View.VISIBLE else View.GONE
+                        
+                        if (isBrowsable) {
+                            browseButton.setOnClickListener {
+                                browseMountContents(containerId, tgt)
+                            }
+                        }
                         if (typ.equals("volume", ignoreCase = true)) {
                             val driver = m.VolumeOptions?.DriverConfig?.Name ?: ""
                             val opts = m.VolumeOptions?.DriverConfig?.Options?.entries?.joinToString(", ") { "${it.key}=${it.value}" } ?: ""
@@ -227,6 +238,17 @@ class ContainerDetailActivity : AppCompatActivity() {
                             val parts = listOfNotNull(if (driver.isNotBlank()) "driver=$driver" else null, if (opts.isNotBlank()) opts else null, if (labels.isNotBlank()) labels else null)
                             subtitle.text = parts.joinToString(" • ")
                             subtitle.visibility = if (subtitle.text.isNullOrBlank()) View.GONE else View.VISIBLE
+                            
+                            // Add click listener for volume cards to navigate to VolumeDetailActivity
+                            card.setOnClickListener {
+                                val volumeName = titleSrc.text.toString()
+                                val intent = Intent(this@ContainerDetailActivity, VolumeDetailActivity::class.java).apply {
+                                    putExtra(VolumeDetailActivity.EXTRA_ENDPOINT_ID, endpointId)
+                                    putExtra(VolumeDetailActivity.EXTRA_VOLUME_NAME, volumeName)
+                                    putExtra(VolumeDetailActivity.EXTRA_AGENT_TARGET, agentTarget)
+                                }
+                                startActivity(intent)
+                            }
                         } else {
                             subtitle.text = ""
                             subtitle.visibility = View.GONE
@@ -337,5 +359,22 @@ class ContainerDetailActivity : AppCompatActivity() {
             cleanedImage.isNotBlank() -> cleanedImage
             else -> "Unknown"
         }
+    }
+
+    private fun browseMountContents(containerId: String, mountPath: String) {
+        val endpointId = intent.getIntExtra(EXTRA_ENDPOINT_ID, -1)
+        
+        // Get container name from the current inspect data or use container ID
+        val containerName = findViewById<MaterialToolbar>(R.id.toolbar_container).title?.toString()
+        
+        // Launch MountBrowserActivity with all necessary data
+        val intent = Intent(this, MountBrowserActivity::class.java).apply {
+            putExtra(MountBrowserActivity.EXTRA_ENDPOINT_ID, endpointId)
+            putExtra(MountBrowserActivity.EXTRA_CONTAINER_ID, containerId)
+            putExtra(MountBrowserActivity.EXTRA_CONTAINER_NAME, containerName)
+            putExtra(MountBrowserActivity.EXTRA_MOUNT_PATH, mountPath)
+            putExtra(MountBrowserActivity.EXTRA_AGENT_TARGET, agentTarget)
+        }
+        startActivity(intent)
     }
 }

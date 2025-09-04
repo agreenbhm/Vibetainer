@@ -297,6 +297,14 @@ interface PortainerService {
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     )
 
+    @POST("api/endpoints/{endpointId}/docker/containers/{id}/exec")
+    suspend fun containerExec(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Body body: ContainerExecRequest,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): ContainerExecResponse
+
     @retrofit2.http.DELETE("api/endpoints/{endpointId}/docker/containers/{id}")
     suspend fun containerRemove(
         @Path("endpointId") endpointId: Int,
@@ -528,6 +536,19 @@ data class DriverConfig(
 data class ContainerState(
     val Status: String?,
     val Running: Boolean?
+)
+
+data class ContainerExecRequest(
+    @SerializedName("Cmd") val Cmd: List<String>,
+    @SerializedName("AttachStdout") val AttachStdout: Boolean = true,
+    @SerializedName("AttachStderr") val AttachStderr: Boolean = true,
+    @SerializedName("AttachStdin") val AttachStdin: Boolean = false,
+    @SerializedName("Tty") val Tty: Boolean = false,
+    @SerializedName("WorkingDir") val WorkingDir: String? = null
+)
+
+data class ContainerExecResponse(
+    @SerializedName("Id") val Id: String?
 )
 
 data class Service(
