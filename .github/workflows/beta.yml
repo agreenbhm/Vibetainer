@@ -44,18 +44,7 @@ jobs:
       - name: Gradle wrapper permissions
         run: chmod +x ./gradlew
 
-      # Build signed Release if keystore secrets exist; else build Debug
-      - name: Assemble Release (signed)
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-        run: |
-          ./gradlew :${MODULE}:clean :${MODULE}:assembleRelease \
-            -Pandroid.injected.signing.store.file=$GITHUB_WORKSPACE/keystore.jks \
-            -Pandroid.injected.signing.store.password=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.ANDROID_KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.ANDROID_KEY_PASSWORD }}
-
       - name: Assemble Debug (fallback)
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 == '' }}
         run: ./gradlew :${MODULE}:clean :${MODULE}:assembleDebug
 
       - name: Locate APK
