@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 - `app/`: Android app module.
-  - `src/main/java/com/example/portainerapp/`: Kotlin sources (activities, network).
+  - `src/main/java/com/agreenbhm/vibetainer/`: Kotlin sources (activities, network).
   - `src/main/res/`: Layouts, drawables, strings.
   - `src/main/AndroidManifest.xml`: Permissions and entry activity.
   - `build.gradle.kts`: Module config (Retrofit, AndroidX, Material).
@@ -12,7 +12,7 @@
 ## Local Setup (Android Studio & Emulator)
 - Install Android Studio (latest) with Android SDK 34 and JDK 17.
 - Open the repo in Android Studio; let Gradle sync.
-- Create an AVD: `Pixel 6 • API 34` (prefer x86_64/arm64 with hardware acceleration).
+- Create an AVD: `Pixel 8 • API 36` (prefer x86_64/arm64 with hardware acceleration).
 - Run on emulator: select the AVD and click Run, or use `./gradlew installDebug` + launch from the app drawer.
 
 ## Build, Test, and Development Commands
