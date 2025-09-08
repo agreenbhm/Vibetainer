@@ -1,6 +1,6 @@
-# Portainer Android App
+# Vibetainer
 
-This sample Android application demonstrates how to connect to a Portainer server via its HTTP API and list Docker Swarm nodes. It uses Retrofit for networking and is structured as a basic Android project.
+This Android app is for managing a Docker swarm or standalone environment with Portainer.
 
 ## Building
 
@@ -10,18 +10,8 @@ Ensure the Android SDK is installed, `ANDROID_HOME` is configured, and Gradle is
 gradle assembleDebug
 ```
 
-## Releases
-
-Publishing a GitHub Release will automatically build the project and upload a signed APK as a release asset. The signing step expects a file named `test.keystore` at the repository root. This keystore is excluded from version control and must be added manually (for example via the GitHub web interface) before running release builds.
-
 ## Configuration
 
-By default the app points to `http://localhost:9000/`. Update the base URL or credentials in `MainActivity` for your environment.
+Set the app's URL to your Portainer instance.  If you have multiple "environments" within Portainer, you will be able to choose the correct one after logging in.  If you need to disable SSL verification, there is an option within the settings screen.
 
-## Excluded binary files
-
-The repository does not track the following binaries. Add them manually via the GitHub web UI if you need them:
-
-- `test.keystore` for signing release builds
-- `gradlew`, `gradlew.bat`, and `gradle/wrapper/` for the Gradle wrapper
 
