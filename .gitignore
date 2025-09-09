@@ -24,3 +24,4 @@ local.properties
 
 # Ignore Claude AI files
 .claude
+/app/release/
