@@ -3,7 +3,7 @@ import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
-    id("com.android.application") version "8.12.2" // Or your desired AGP version
+    id("com.android.application") version "8.13.0" // Or your desired AGP version
     id("org.jetbrains.kotlin.android") version "2.2.10" // Or your desired Kotlin plugin version
 }
 

@@ -3,6 +3,8 @@ package com.agreenbhm.vibetainer.ui
 import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import android.view.Menu
+import android.view.MenuItem
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -72,5 +74,22 @@ class ConfigsListActivity : AppCompatActivity() {
             }
         })
     }
-}
 
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_configs_list, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_new_config -> {
+                val endpointId = intent.getIntExtra("endpoint_id", -1)
+                val i = Intent(this, ConfigDetailActivity::class.java)
+                i.putExtra("endpoint_id", endpointId)
+                startActivity(i)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+}

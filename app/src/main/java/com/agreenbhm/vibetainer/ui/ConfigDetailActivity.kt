@@ -10,6 +10,8 @@ import io.github.rosemoe.sora.langs.textmate.TextMateColorScheme
 import io.github.rosemoe.sora.langs.textmate.TextMateLanguage
 import io.github.rosemoe.sora.langs.textmate.registry.GrammarRegistry
 import io.github.rosemoe.sora.langs.textmate.registry.ThemeRegistry
+import io.github.rosemoe.sora.langs.textmate.registry.model.ThemeModel
+import org.eclipse.tm4e.core.registry.IThemeSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
@@ -28,6 +30,11 @@ import android.view.View
 class ConfigDetailActivity : AppCompatActivity() {
     private var cfgIdForMenu: String? = null
     private var cloneModeForMenu: Boolean = false
+    private lateinit var editor: CodeEditor
+    private var useLightTheme: Boolean = false
+    private val themeRegistry = ThemeRegistry.getInstance()
+    private val darkName = "solarized-dark-color-theme"
+    private val lightName = "solarized-light-color-theme"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +53,7 @@ class ConfigDetailActivity : AppCompatActivity() {
         com.agreenbhm.vibetainer.ui.EdgeToEdge.apply(this, toolbar, findViewById(R.id.editor_config_data))
 
         val editName = findViewById<android.widget.EditText>(R.id.input_config_name)
-        val editor = findViewById<CodeEditor>(R.id.editor_config_data)
+        editor = findViewById(R.id.editor_config_data)
 
         var isCloneMode = false
         // If started with clone extras, prefill and allow editing as a new config
@@ -57,9 +64,9 @@ class ConfigDetailActivity : AppCompatActivity() {
 
         val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        useLightTheme = prefs.yamlLightTheme()
 
         // Initialize editor theme/grammar and set content
-        val useLightTheme = prefs.yamlLightTheme()
         editor.isWordwrap = prefs.yamlWordWrap()
         editor.setLineNumberEnabled(true)
         editor.nonPrintablePaintingFlags = io.github.rosemoe.sora.widget.CodeEditor.FLAG_DRAW_WHITESPACE_LEADING or io.github.rosemoe.sora.widget.CodeEditor.FLAG_DRAW_WHITESPACE_IN_SELECTION
@@ -71,12 +78,36 @@ class ConfigDetailActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     FileProviderRegistry.getInstance().addFileProvider(AssetsFileResolver(applicationContext.assets))
                     GrammarRegistry.getInstance().loadGrammars("textmate/languages.json")
+                    // Load TextMate themes (dark/light) like YAML viewer
+                    val themeAssetsPath = "textmate/themes/"
+                    runCatching {
+                        themeRegistry.loadTheme(
+                            ThemeModel(
+                                IThemeSource.fromInputStream(
+                                    FileProviderRegistry.getInstance().tryGetInputStream(themeAssetsPath + darkName + ".json"),
+                                    themeAssetsPath + darkName + ".json",
+                                    null
+                                ),
+                                darkName
+                            )
+                        )
+                        themeRegistry.loadTheme(
+                            ThemeModel(
+                                IThemeSource.fromInputStream(
+                                    FileProviderRegistry.getInstance().tryGetInputStream(themeAssetsPath + lightName + ".json"),
+                                    themeAssetsPath + lightName + ".json",
+                                    null
+                                ),
+                                lightName
+                            )
+                        )
+                    }
                     delay(50)
-                    ThemeRegistry.getInstance().setTheme(if (useLightTheme) "solarized-light-color-theme" else "solarized-dark-color-theme")
-                    val colorScheme = TextMateColorScheme.create(ThemeRegistry.getInstance())
+                    themeRegistry.setTheme(if (useLightTheme) lightName else darkName)
+                    val colorScheme = TextMateColorScheme.create(themeRegistry)
                     editor.setColorScheme(colorScheme)
-                    val language = TextMateLanguage.create("source.yaml", true)
-                    editor.setEditorLanguage(language)
+//                    val language = TextMateLanguage.create("source.yaml", true)
+//                    editor.setEditorLanguage(language)
                     delay(100)
                 }
             } catch (e: Exception) {
@@ -167,6 +198,8 @@ class ConfigDetailActivity : AppCompatActivity() {
         cloneItem?.isVisible = !cfgIdForMenu.isNullOrBlank() && !cloneModeForMenu
         val deleteItem = menu.findItem(R.id.action_delete)
         deleteItem?.isVisible = !cfgIdForMenu.isNullOrBlank() && !cloneModeForMenu
+        menu.findItem(R.id.action_toggle_wrap)?.isChecked = editor.isWordwrap
+        menu.findItem(R.id.action_toggle_light_theme)?.isChecked = useLightTheme
         return super.onPrepareOptionsMenu(menu)
     }
 
@@ -214,7 +247,45 @@ class ConfigDetailActivity : AppCompatActivity() {
                     .show()
                 true
             }
+            R.id.action_toggle_wrap -> {
+                editor.isWordwrap = !editor.isWordwrap
+                com.agreenbhm.vibetainer.util.Prefs(this).setYamlWordWrap(editor.isWordwrap)
+                invalidateOptionsMenu()
+                true
+            }
+            R.id.action_toggle_light_theme -> {
+                useLightTheme = !useLightTheme
+                com.agreenbhm.vibetainer.util.Prefs(this).setYamlLightTheme(useLightTheme)
+                applyEditorTheme()
+                invalidateOptionsMenu()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun applyEditorTheme() {
+        lifecycleScope.launch {
+            withContext(Dispatchers.Main) {
+                runCatching {
+                    val currentText = editor.text.toString()
+                    themeRegistry.setTheme(if (useLightTheme) lightName else darkName)
+                    val colorScheme = TextMateColorScheme.create(themeRegistry)
+                    editor.setColorScheme(colorScheme)
+                    delay(50)
+                    if (currentText.isNotEmpty()) {
+                        editor.setText("")
+                        delay(25)
+                        editor.setText(currentText)
+                    }
+                    editor.rerunAnalysis()
+                    editor.invalidate()
+                }.onFailure {
+                    editor.setColorScheme(SchemeDarcula())
+                    editor.rerunAnalysis()
+                    editor.invalidate()
+                }
+            }
         }
     }
     
