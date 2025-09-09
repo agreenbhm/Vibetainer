@@ -12,3 +12,9 @@ gradle/wrapper/
 # Ignore signing keys
 *.keystore
 *.jks
+
+# Ignore local configuration files
+local.properties
+
+# Ignore IDE-specific files
+.idea/
