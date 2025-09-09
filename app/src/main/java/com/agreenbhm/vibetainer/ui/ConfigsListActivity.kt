@@ -26,6 +26,7 @@ class ConfigsListActivity : AppCompatActivity() {
         toolbar.title = "Configs"
         toolbar.subtitle = prefs.endpointName()
         setSupportActionBar(toolbar)
+        EdgeToEdge.apply(this, toolbar, findViewById(R.id.swipe_list))
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { finish() }
 

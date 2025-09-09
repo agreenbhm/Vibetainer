@@ -39,13 +39,15 @@
             android:layout_height="wrap_content"
             android:textSize="20sp"
             android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
             android:text="name" />
 
         <TextView
             android:id="@+id/text_container_image"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="image" />
+            android:text="image"
+            />
 
         <TextView
             android:id="@+id/text_container_affinity"

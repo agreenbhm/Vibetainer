@@ -27,7 +27,8 @@
             android:layout_height="match_parent"
             android:gravity="center"
             android:text="No environments found"
-            android:visibility="gone" />
+            android:visibility="gone"
+            android:textColor="?attr/colorOnSurface"/>
     </FrameLayout>
 
 </LinearLayout>

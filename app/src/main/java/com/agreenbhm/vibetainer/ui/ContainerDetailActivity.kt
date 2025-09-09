@@ -1,7 +1,6 @@
 package com.agreenbhm.vibetainer.ui
 
 import android.os.Bundle
-import android.widget.Button
 import android.widget.TextView
 import android.widget.Spinner
 import android.widget.ArrayAdapter
@@ -187,14 +186,14 @@ class ContainerDetailActivity : AppCompatActivity() {
                 } else {
                     for (m in mounts.sortedBy { it.Destination }) {
                         val card = layoutInflater.inflate(R.layout.item_mount_card, mountsContainer, false)
-                        val sourceRow = card.findViewById<android.view.View>(R.id.mount_row_source)
+                        val sourceRow = card.findViewById<android.view.View>(R.id.mount_row_host)
                         val targetRow = card.findViewById<android.view.View>(R.id.mount_row_target)
                         val titleSrc = card.findViewById<TextView>(R.id.mount_source)
                         val titleTgt = card.findViewById<TextView>(R.id.mount_target)
                         val subtitle = card.findViewById<TextView>(R.id.mount_subtitle)
                         val chip = card.findViewById<com.google.android.material.chip.Chip>(R.id.mount_type_chip)
                         val browseButton = card.findViewById<com.google.android.material.button.MaterialButton>(R.id.mount_browse_button)
-                        val sourceLabelView = card.findViewById<TextView>(R.id.mount_label_source)
+                        val sourceLabelView = card.findViewById<TextView>(R.id.mount_label_host)
                         val src = m.Source ?: ""
                         val tgt = m.Target ?: m.Destination ?: ""
                         val typ = m.Type ?: ""

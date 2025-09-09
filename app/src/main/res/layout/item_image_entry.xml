@@ -25,9 +25,11 @@
             android:layout_height="wrap_content"
             android:layout_toEndOf="@id/check_select"
             android:layout_marginStart="12dp"
-            android:text="ubuntu:latest"
+            android:text="image_name"
             android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            />
 
         <TextView
             android:id="@+id/text_node"
@@ -36,7 +38,7 @@
             android:layout_below="@id/text_tag"
             android:layout_toEndOf="@id/check_select"
             android:layout_marginStart="12dp"
-            android:text="node: docker1"
+            android:text="node: node_name"
             android:textSize="12sp" />
 
         <TextView
@@ -44,7 +46,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentEnd="true"
-            android:text="12.3 MB"
+            android:text="image_size"
             android:textSize="12sp" />
 
         <com.google.android.material.chip.Chip

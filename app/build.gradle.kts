@@ -1,13 +1,31 @@
+import org.gradle.kotlin.dsl.extra
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    id("com.android.application") version "8.12.2" // Or your desired AGP version
+    id("org.jetbrains.kotlin.android") version "2.2.10" // Or your desired Kotlin plugin version
+}
+
+val localPropertiesFile = rootProject.file("local.properties")
+val keystoreProperties = Properties()
+
+if (localPropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(localPropertiesFile))
 }
 
 android {
     signingConfigs {
         create("release") {
-            storeFile = file(rootProject.extra["releaseKeystorePath"] as String)
-            keyAlias = rootProject.extra["releaseKeyName"] as String
+            val releaseKeystorePath: String by rootProject.extra
+            val releaseKeyName: String by rootProject.extra
+            val releaseKeystorePassword: String by rootProject.extra
+            val releaseKeyPassword: String by rootProject.extra
+
+            storeFile = file(releaseKeystorePath)
+            keyAlias = releaseKeyName
+            storePassword = releaseKeystorePassword
+            keyPassword = releaseKeyPassword
         }
     }
     namespace = "com.agreenbhm.vibetainer"
@@ -16,15 +34,15 @@ android {
     defaultConfig {
         applicationId = "com.agreenbhm.vibetainer"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 36
+        versionCode = 5
+        versionName = "1.0.$versionCode"
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            //proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }
     }

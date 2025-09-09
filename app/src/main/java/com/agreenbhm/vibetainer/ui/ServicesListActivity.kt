@@ -29,6 +29,7 @@ class ServicesListActivity : AppCompatActivity() {
         toolbar.title = "Services"
         toolbar.subtitle = prefs.endpointName()
         setSupportActionBar(toolbar)
+        EdgeToEdge.apply(this, toolbar, findViewById(R.id.swipe_list))
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { finish() }
 

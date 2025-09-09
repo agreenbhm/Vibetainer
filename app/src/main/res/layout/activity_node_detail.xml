@@ -117,7 +117,9 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="Containers"
-                        android:textSize="18sp" />
+                        android:textSize="18sp"
+                        android:textColor="?attr/colorOnSurface"
+                        />
                     <TextView
                         android:id="@+id/text_containers_count_card"
                         android:layout_width="wrap_content"
@@ -163,7 +165,9 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Images"
-                    android:textSize="18sp" />
+                    android:textSize="18sp"
+                    android:textColor="?attr/colorOnSurface"
+                    />
                 <TextView
                     android:id="@+id/text_images_count"
                     android:layout_width="wrap_content"
@@ -189,7 +193,9 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Volumes"
-                    android:textSize="18sp" />
+                    android:textSize="18sp"
+                    android:textColor="?attr/colorOnSurface"
+                    />
                 <TextView
                     android:id="@+id/text_volumes_count"
                     android:layout_width="wrap_content"

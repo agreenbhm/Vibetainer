@@ -38,7 +38,9 @@
                     android:layout_height="wrap_content"
                     android:textSize="20sp"
                     android:textStyle="bold"
-                    android:text="Network Name" />
+                    android:text="Network Name"
+                    android:textColor="?attr/colorOnSurface"
+                    />
 
                 <!-- Network ID -->
                 <TextView

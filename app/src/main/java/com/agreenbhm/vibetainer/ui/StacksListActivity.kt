@@ -27,6 +27,7 @@ class StacksListActivity : AppCompatActivity() {
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar_list)
         toolbar.title = "Stacks"
         setSupportActionBar(toolbar)
+        EdgeToEdge.apply(this, toolbar, findViewById(R.id.swipe_list))
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         toolbar.setNavigationOnClickListener { finish() }
 
