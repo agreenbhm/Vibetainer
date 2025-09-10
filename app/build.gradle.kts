@@ -36,10 +36,8 @@ android {
         applicationId = "com.agreenbhm.vibetainer"
         minSdk = 24
         targetSdk = 36
-//        versionCode = 7
-//        versionName = "1.0.$versionCode"
         versionCode = versioning.getVersionCode()
-        versionName = versioning.getVersionName()
+        versionName = versioning.getVersionName() + ".$versionCode"
     }
 
     buildTypes {
