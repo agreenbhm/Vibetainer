@@ -18,75 +18,57 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <ScrollView
+        <LinearLayout
+            android:id="@+id/content_mount_browser"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fillViewport="true">
+            android:orientation="vertical"
+            android:padding="12dp">
 
-            <LinearLayout
-                android:id="@+id/content_mount_browser"
+            <!-- Container and Status Info -->
+            <TextView
+                android:id="@+id/text_mount_info"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
+                android:text="Container Info"
+                android:textSize="12sp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Current path -->
+            <TextView
+                android:id="@+id/text_current_path"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textSize="13sp"
+                android:textColor="?attr/colorOnSurface"
+                android:padding="8dp"
+                android:background="?attr/colorSurfaceVariant"
+                android:text="/" />
+
+            <!-- File list -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_files"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:overScrollMode="never"
+                android:nestedScrollingEnabled="true"
+                android:paddingTop="8dp" />
+
+            <!-- Empty state -->
+            <TextView
+                android:id="@+id/text_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Empty directory"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:gravity="center"
                 android:padding="16dp"
-                android:background="?attr/colorSurface">
+                android:visibility="gone" />
 
-                <!-- Container and Status Info -->
-                <TextView
-                    android:id="@+id/text_mount_info"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Container Info"
-                    android:textSize="12sp"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginTop="4dp" />
-
-                <!-- Directory Contents Section Header -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="16dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Directory Contents"
-                        android:textStyle="bold" />
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/switch_long_format"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Long format"
-                        android:checked="false" />
-
-                </LinearLayout>
-
-                <!-- Directory Contents Display -->
-                <HorizontalScrollView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:background="?attr/colorSurfaceVariant">
-                    
-                    <TextView
-                        android:id="@+id/text_directory_contents"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="monospace"
-                        android:textSize="12sp"
-                        android:text="Loading..."
-                        android:textIsSelectable="true"
-                        android:padding="12dp" />
-                        
-                </HorizontalScrollView>
-
-            </LinearLayout>
-
-        </ScrollView>
+        </LinearLayout>
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
