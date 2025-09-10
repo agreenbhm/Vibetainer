@@ -2,8 +2,15 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_stack_start"
+        android:title="@string/start_stack"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_stack_stop"
+        android:title="@string/stop_stack"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_view_yaml"
         android:title="View YAML"
         app:showAsAction="never" />
 </menu>
-

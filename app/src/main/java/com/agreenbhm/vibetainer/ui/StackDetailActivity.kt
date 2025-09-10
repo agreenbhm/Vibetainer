@@ -32,8 +32,18 @@ class StackDetailActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_view_yaml -> { fetchYamlAndOpen(); true }
+            R.id.action_stack_start -> { performStart(); true }
+            R.id.action_stack_stop -> { performStop(); true }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    override fun onPrepareOptionsMenu(menu: android.view.Menu): Boolean {
+        // Enable/disable start/stop based on resolved stack id
+        val enabled = currentStackId > 0
+        menu.findItem(R.id.action_stack_start)?.isEnabled = enabled
+        menu.findItem(R.id.action_stack_stop)?.isEnabled = enabled
+        return super.onPrepareOptionsMenu(menu)
     }
 
     private fun fetchYamlAndOpen() {
@@ -87,10 +97,7 @@ class StackDetailActivity : AppCompatActivity() {
         val chipStopped: Chip = findViewById(R.id.chip_filter_stopped)
         val servicesRecycler = findViewById<RecyclerView>(R.id.recycler_stack_services)
         val recycler = findViewById<RecyclerView>(R.id.recycler_stack_containers)
-        val btnStart = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_stack_start)
-        val btnStop = findViewById<com.google.android.material.button.MaterialButton>(R.id.btn_stack_stop)
-        btnStart.isEnabled = false
-        btnStop.isEnabled = false
+        // Start/Stop now live in the overflow menu, initial disabled state handled in onPrepareOptionsMenu
         // Disable nested scrolling so the whole page scrolls as one
         servicesRecycler.isNestedScrollingEnabled = false
         recycler.isNestedScrollingEnabled = false
@@ -251,52 +258,13 @@ class StackDetailActivity : AppCompatActivity() {
                     val id = stacks.firstOrNull { (it.Name ?: "") == stackName && (it.EndpointId ?: -1) == endpointId }?.Id
                     if (id != null) {
                         currentStackId = id
-                        btnStart.isEnabled = true
-                        btnStop.isEnabled = true
+                        invalidateOptionsMenu()
                     }
                 } catch (_: Exception) { /* ignore; buttons remain disabled */ }
             }
         }
 
-        btnStart.setOnClickListener {
-            if (currentStackId <= 0) return@setOnClickListener
-            swipe.isRefreshing = true
-            lifecycleScope.launch {
-                try {
-                    val resp = withContext(Dispatchers.IO) { api.stackStart(currentStackId, endpointId) }
-                    if (resp.isSuccessful) {
-                        Snackbar.make(recycler, "Stack start triggered", Snackbar.LENGTH_SHORT).show()
-                        load()
-                    } else {
-                        Snackbar.make(recycler, "Failed to start: ${resp.code()}", Snackbar.LENGTH_LONG).show()
-                    }
-                } catch (e: Exception) {
-                    Snackbar.make(recycler, "Start error: ${e.message}", Snackbar.LENGTH_LONG).show()
-                } finally {
-                    swipe.isRefreshing = false
-                }
-            }
-        }
-
-        btnStop.setOnClickListener {
-            if (currentStackId <= 0) return@setOnClickListener
-            swipe.isRefreshing = true
-            lifecycleScope.launch {
-                try {
-                    val resp = withContext(Dispatchers.IO) { api.stackStop(currentStackId, endpointId) }
-                    if (resp.isSuccessful) {
-                        Snackbar.make(recycler, "Stack stop triggered", Snackbar.LENGTH_SHORT).show()
-                        load()
-                    } else {
-                        Snackbar.make(recycler, "Failed to stop: ${resp.code()}", Snackbar.LENGTH_LONG).show()
-                    }
-                } catch (e: Exception) {
-                    Snackbar.make(recycler, "Stop error: ${e.message}", Snackbar.LENGTH_LONG).show()
-                } finally {
-                    swipe.isRefreshing = false
-                }
-            }
-        }
+        // Actions now handled via menu selections
 
         // YAML handling implemented via onOptionsItemSelected
 
@@ -312,6 +280,58 @@ class StackDetailActivity : AppCompatActivity() {
         swipe.setOnRefreshListener { load() }
         resolveStackId()
         load()
+    }
+
+    private fun performStart() {
+        if (currentStackId <= 0) return
+        val swipe = findViewById<SwipeRefreshLayout>(R.id.swipe_stack)
+        val recycler = findViewById<RecyclerView>(R.id.recycler_stack_containers)
+        val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        val endpointId = prefs.endpointId()
+        swipe.isRefreshing = true
+        lifecycleScope.launch {
+            try {
+                val resp = withContext(Dispatchers.IO) { api.stackStart(currentStackId, endpointId) }
+                if (resp.isSuccessful) {
+                    Snackbar.make(recycler, "Stack start triggered", Snackbar.LENGTH_SHORT).show()
+                    // Reload data
+                    recreate()
+                } else {
+                    Snackbar.make(recycler, "Failed to start: ${resp.code()}", Snackbar.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Snackbar.make(recycler, "Start error: ${e.message}", Snackbar.LENGTH_LONG).show()
+            } finally {
+                swipe.isRefreshing = false
+            }
+        }
+    }
+
+    private fun performStop() {
+        if (currentStackId <= 0) return
+        val swipe = findViewById<SwipeRefreshLayout>(R.id.swipe_stack)
+        val recycler = findViewById<RecyclerView>(R.id.recycler_stack_containers)
+        val prefs = com.agreenbhm.vibetainer.util.Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        val endpointId = prefs.endpointId()
+        swipe.isRefreshing = true
+        lifecycleScope.launch {
+            try {
+                val resp = withContext(Dispatchers.IO) { api.stackStop(currentStackId, endpointId) }
+                if (resp.isSuccessful) {
+                    Snackbar.make(recycler, "Stack stop triggered", Snackbar.LENGTH_SHORT).show()
+                    // Reload data
+                    recreate()
+                } else {
+                    Snackbar.make(recycler, "Failed to stop: ${resp.code()}", Snackbar.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Snackbar.make(recycler, "Stop error: ${e.message}", Snackbar.LENGTH_LONG).show()
+            } finally {
+                swipe.isRefreshing = false
+            }
+        }
     }
 
     private fun confirmRemoveSelected(

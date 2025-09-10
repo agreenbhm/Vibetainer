@@ -1,10 +1,11 @@
-import org.gradle.kotlin.dsl.extra
+
 import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
     id("com.android.application") version "8.13.0" // Or your desired AGP version
     id("org.jetbrains.kotlin.android") version "2.2.10" // Or your desired Kotlin plugin version
+    id("de.nanogiants.android-versioning") version "2.4.0"
 }
 
 val localPropertiesFile = rootProject.file("local.properties")
@@ -35,8 +36,10 @@ android {
         applicationId = "com.agreenbhm.vibetainer"
         minSdk = 24
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.0.$versionCode"
+//        versionCode = 7
+//        versionName = "1.0.$versionCode"
+        versionCode = versioning.getVersionCode()
+        versionName = versioning.getVersionName()
     }
 
     buildTypes {

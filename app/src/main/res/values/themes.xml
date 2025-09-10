@@ -6,14 +6,18 @@
         <!-- Edge-to-edge: transparent system bars (content draws behind) -->
         <item name="android:navigationBarColor" tools:targetApi="l">@android:color/transparent</item>
         <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
+        <!-- Use light (white) status bar icons to contrast the gradient -->
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
         <!-- MaterialToolbar instances use explicit style in layouts -->
     </style>
 
     <style name="Widget.Portainer.MaterialToolbar" parent="Widget.Material3.Toolbar">
-        <item name="backgroundTint">?attr/colorSurface</item>
-        <item name="titleTextColor">?attr/colorOnSurface</item>
-        <item name="subtitleTextColor">?attr/colorOnSurfaceVariant</item>
-        <item name="navigationIconTint">?attr/colorOnSurface</item>
+        <!-- Gradient background to match app logo -->
+        <item name="android:background">@drawable/toolbar_gradient</item>
+        <!-- Ensure good contrast on the blue/purple gradient -->
+        <item name="titleTextColor">@android:color/white</item>
+        <item name="subtitleTextColor">@android:color/white</item>
+        <item name="navigationIconTint">@android:color/white</item>
         <item name="android:elevation">4dp</item>
     </style>
 </resources>
