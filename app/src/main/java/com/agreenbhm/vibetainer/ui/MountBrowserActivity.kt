@@ -32,6 +32,8 @@ class MountBrowserActivity : AppCompatActivity() {
     private var currentPath: String = "/"
     private var rootPath: String = "/"
     private var lastWsOutput: String = ""
+    private var showHidden: Boolean = false
+    private var sortAsc: Boolean = true
     
     companion object {
         const val EXTRA_ENDPOINT_ID = "endpoint_id"
@@ -65,6 +67,9 @@ class MountBrowserActivity : AppCompatActivity() {
         swipe.setOnRefreshListener { loadDirectory(currentPath) }
         
         // Load mount contents
+        val prefsInit = Prefs(this)
+        showHidden = prefsInit.mountShowHidden()
+        sortAsc = prefsInit.mountSortAsc()
         rootPath = (mountPath ?: "/").removeSuffix("/")
         currentPath = if (rootPath.isBlank()) "/" else rootPath
         loadDirectory(currentPath)
@@ -84,7 +89,7 @@ class MountBrowserActivity : AppCompatActivity() {
                 val next = if (currentPath == "/") "/${entry.name}" else "$currentPath/${entry.name}"
                 loadDirectory(next)
             } else {
-                Snackbar.make(findViewById(R.id.recycler_files), entry.name, Snackbar.LENGTH_SHORT).show()
+                openFilePreview(entry)
             }
         }
         val rv = findViewById<RecyclerView>(R.id.recycler_files)
@@ -107,7 +112,8 @@ class MountBrowserActivity : AppCompatActivity() {
         val swipe = findViewById<SwipeRefreshLayout>(R.id.swipe_mount_browser)
         val empty = findViewById<TextView>(R.id.text_empty)
         val pathText = findViewById<TextView>(R.id.text_current_path)
-        pathText.text = path
+        val normalized = resolveAbsolutePath(path)
+        pathText.text = normalized
         swipe.isRefreshing = true
         empty.visibility = android.view.View.GONE
         updateMountInfo("Listing directory...")
@@ -118,7 +124,7 @@ class MountBrowserActivity : AppCompatActivity() {
                 val api = PortainerApi.create(this@MountBrowserActivity, prefs.baseUrl(), prefs.token())
                 
                 val execRequest = ContainerExecRequest(
-                    Cmd = listOf("/bin/sh", "-c", buildListCommand(path)),
+                    Cmd = listOf("/bin/sh", "-c", buildListCommand(normalized)),
                     AttachStdout = true,
                     AttachStderr = true
                 )
@@ -185,7 +191,19 @@ class MountBrowserActivity : AppCompatActivity() {
     private fun buildListCommand(path: String): String {
         val p = path.ifBlank { "/" }
         val escaped = p.replace("'", "'\"'\"'")
-        return "cd -- '$escaped' || exit; LC_ALL=C ls -a1 -p --group-directories-first; printf '%s' '---VibetainerEOF---'"
+        val hiddenFlag = if (showHidden) "-a" else ""
+        // Client-side sorting for consistent behavior across GNU and BusyBox ls
+        return "cd -- '$escaped' || exit; LC_ALL=C ls $hiddenFlag -1 -p; printf '%s' '---VibetainerEOF---'"
+    }
+
+    private fun resolveAbsolutePath(path: String): String {
+        val abs = if (path.startsWith("/")) path else if (currentPath.endsWith("/")) currentPath + path else "$currentPath/$path"
+        val stack = mutableListOf<String>()
+        for (seg in abs.split('/')) {
+            if (seg.isEmpty() || seg == ".") continue
+            if (seg == "..") { if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) } else stack.add(seg)
+        }
+        return "/" + stack.joinToString("/")
     }
 
     private fun parseAndShow(output: String) {
@@ -194,17 +212,100 @@ class MountBrowserActivity : AppCompatActivity() {
         swipe.isRefreshing = false
         updateMountInfo("Ready")
         val lines = output.replace("\r", "").split("\n")
-        val entries = lines
+        val base = lines
             .map { it.trim() }
             .filter { it.isNotBlank() }
-            .filter { it != "." && it != ".." }
+            // Always exclude current directory entry
+            .filter { it != "." && it != "./" }
             .map { name ->
-                val isDir = name.endsWith('/')
+                val isDir = name.endsWith('/') || name == ".." || name == "../"
                 FileEntry(name = name.trimEnd('/'), isDir = isDir)
             }
-        filesAdapter.submit(entries)
-        empty.visibility = if (entries.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+            .toMutableList()
+        // Ensure parent directory entry ".." is always visible
+        if (base.none { it.name == ".." }) {
+            base.add(0, FileEntry(name = "..", isDir = true))
+        }
+        // Apply directories-first sorting, then A→Z or Z→A, keeping ".." at the top
+        val parent = base.firstOrNull { it.name == ".." }
+        val others = base.filter { it.name != ".." }
+        val dirs = others.filter { it.isDir }
+        val files = others.filter { !it.isDir }
+        val comparator = compareBy<FileEntry> { it.name.lowercase() }
+        val sortedDirs = if (sortAsc) dirs.sortedWith(comparator) else dirs.sortedWith(comparator.reversed())
+        val sortedFiles = if (sortAsc) files.sortedWith(comparator) else files.sortedWith(comparator.reversed())
+        val result = mutableListOf<FileEntry>()
+        if (parent != null) result.add(parent)
+        result.addAll(sortedDirs)
+        result.addAll(sortedFiles)
+        filesAdapter.submit(result)
+        empty.visibility = if (others.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
         currentPath = findViewById<TextView>(R.id.text_current_path).text.toString()
+    }
+
+    private fun openFilePreview(entry: FileEntry) {
+        val fullPath = if (currentPath == "/") "/${entry.name}" else "$currentPath/${entry.name}"
+        val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+        val view = layoutInflater.inflate(R.layout.bottomsheet_file_preview, null)
+        sheet.setContentView(view)
+        val title = view.findViewById<TextView>(R.id.text_preview_title)
+        val pathView = view.findViewById<TextView>(R.id.text_preview_path)
+        val content = view.findViewById<TextView>(R.id.text_preview_content)
+        val progress = view.findViewById<android.widget.ProgressBar>(R.id.progress_preview)
+        title.text = entry.name
+        pathView.text = fullPath
+        content.text = "Loading..."
+        progress.visibility = android.view.View.VISIBLE
+        sheet.show()
+
+        val prefs = Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        val cmd = buildPreviewCommand(currentPath, entry.name)
+        val execRequest = ContainerExecRequest(
+            Cmd = listOf("/bin/sh", "-c", cmd),
+            AttachStdout = true,
+            AttachStderr = true
+        )
+        lifecycleScope.launch {
+            try {
+                val execResponse = withContext(Dispatchers.IO) {
+                    api.containerExec(endpointId, containerId ?: "", execRequest, agentTarget)
+                }
+                val execId = execResponse.Id
+                if (!execId.isNullOrBlank()) {
+                    val client = ExecWebSocketClient(
+                        context = this@MountBrowserActivity,
+                        baseUrl = prefs.baseUrl(),
+                        apiToken = prefs.token(),
+                        onMessage = { msg ->
+                            runOnUiThread { content.text = msg }
+                        },
+                        onError = { err ->
+                            runOnUiThread {
+                                progress.visibility = android.view.View.GONE
+                                content.text = "Error: $err"
+                            }
+                        },
+                        onClosed = {
+                            runOnUiThread { progress.visibility = android.view.View.GONE }
+                        }
+                    )
+                    client.connect(endpointId, execId, agentTarget)
+                } else {
+                    progress.visibility = android.view.View.GONE
+                    content.text = "Unable to create exec session"
+                }
+            } catch (e: Exception) {
+                progress.visibility = android.view.View.GONE
+                content.text = "Error: ${e.message}"
+            }
+        }
+    }
+
+    private fun buildPreviewCommand(dir: String, name: String): String {
+        val escapedDir = dir.replace("'", "'\"'\"'")
+        val escapedName = name.replace("'", "'\"'\"'")
+        return "cd -- '$escapedDir' || exit; if [ -f '$escapedName' ]; then if command -v head >/dev/null 2>&1; then head -c 65536 -- '$escapedName'; else sed -n '1,400p' -- '$escapedName'; fi; else printf '%s' 'Not a regular file'; fi; printf '%s' '---VibetainerEOF---'"
     }
 
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
@@ -214,24 +315,48 @@ class MountBrowserActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.action_up_dir -> { navigateUp(); true }
+            R.id.action_show_hidden -> {
+                showHidden = !showHidden
+                Prefs(this).setMountShowHidden(showHidden)
+                invalidateOptionsMenu()
+                loadDirectory(currentPath)
+                true
+            }
+            R.id.action_sort_az -> {
+                sortAsc = true
+                Prefs(this).setMountSortAsc(true)
+                invalidateOptionsMenu()
+                loadDirectory(currentPath)
+                true
+            }
+            R.id.action_sort_za -> {
+                sortAsc = false
+                Prefs(this).setMountSortAsc(false)
+                invalidateOptionsMenu()
+                loadDirectory(currentPath)
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
 
+    override fun onPrepareOptionsMenu(menu: android.view.Menu): Boolean {
+        menu.findItem(R.id.action_show_hidden)?.isChecked = showHidden
+        menu.findItem(R.id.action_sort_az)?.isChecked = sortAsc
+        menu.findItem(R.id.action_sort_za)?.isChecked = !sortAsc
+        // No "up" menu item per request
+        return super.onPrepareOptionsMenu(menu)
+    }
+
     private fun navigateUp() {
-        val atRoot = currentPath.removeSuffix("/") == rootPath.removeSuffix("/")
-        if (atRoot) { finish(); return }
+        val atFsRoot = currentPath.removeSuffix("/") == ""
+        if (atFsRoot) { finish(); return }
         val parent = currentPath.removeSuffix("/").substringBeforeLast('/', missingDelimiterValue = "/")
         loadDirectory(if (parent.isBlank()) "/" else parent)
     }
 
     override fun onBackPressed() {
-        val atRoot = currentPath.removeSuffix("/") == rootPath.removeSuffix("/")
-        if (!atRoot) {
-            navigateUp()
-        } else {
-            super.onBackPressed()
-        }
+        val atFsRoot = currentPath.removeSuffix("/") == ""
+        if (!atFsRoot) navigateUp() else super.onBackPressed()
     }
 }

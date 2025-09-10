@@ -78,6 +78,12 @@ class Prefs(context: Context) {
     fun yamlLightTheme(): Boolean = prefs.getBoolean(KEY_YAML_LIGHT_THEME, false)
     fun setYamlLightTheme(v: Boolean) { prefs.edit().putBoolean(KEY_YAML_LIGHT_THEME, v).apply() }
 
+    // Mount browser preferences
+    fun mountShowHidden(): Boolean = prefs.getBoolean(KEY_MOUNT_SHOW_HIDDEN, false)
+    fun setMountShowHidden(v: Boolean) { prefs.edit().putBoolean(KEY_MOUNT_SHOW_HIDDEN, v).apply() }
+    fun mountSortAsc(): Boolean = prefs.getBoolean(KEY_MOUNT_SORT_ASC, true)
+    fun setMountSortAsc(v: Boolean) { prefs.edit().putBoolean(KEY_MOUNT_SORT_ASC, v).apply() }
+
 
     fun getAxisMax(endpointId: Int, nodeId: String): Float {
         val key = axisKey(endpointId, nodeId)
@@ -144,5 +150,7 @@ class Prefs(context: Context) {
         private const val KEY_LOGS_AUTO_REFRESH = "logs_auto_refresh"
         private const val KEY_YAML_WORD_WRAP = "yaml_word_wrap"
         private const val KEY_YAML_LIGHT_THEME = "yaml_light_theme"
+        private const val KEY_MOUNT_SHOW_HIDDEN = "mount_show_hidden"
+        private const val KEY_MOUNT_SORT_ASC = "mount_sort_asc"
     }
 }
