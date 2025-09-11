@@ -83,6 +83,8 @@ class Prefs(context: Context) {
     fun setMountShowHidden(v: Boolean) { prefs.edit().putBoolean(KEY_MOUNT_SHOW_HIDDEN, v).apply() }
     fun mountSortAsc(): Boolean = prefs.getBoolean(KEY_MOUNT_SORT_ASC, true)
     fun setMountSortAsc(v: Boolean) { prefs.edit().putBoolean(KEY_MOUNT_SORT_ASC, v).apply() }
+    fun mountDownloadHintDismissed(): Boolean = prefs.getBoolean(KEY_MOUNT_HINT_DISMISSED, false)
+    fun setMountDownloadHintDismissed(v: Boolean) { prefs.edit().putBoolean(KEY_MOUNT_HINT_DISMISSED, v).apply() }
 
 
     fun getAxisMax(endpointId: Int, nodeId: String): Float {
@@ -152,5 +154,6 @@ class Prefs(context: Context) {
         private const val KEY_YAML_LIGHT_THEME = "yaml_light_theme"
         private const val KEY_MOUNT_SHOW_HIDDEN = "mount_show_hidden"
         private const val KEY_MOUNT_SORT_ASC = "mount_sort_asc"
+        private const val KEY_MOUNT_HINT_DISMISSED = "mount_hint_dismissed"
     }
 }

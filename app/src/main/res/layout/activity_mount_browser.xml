@@ -47,6 +47,17 @@
                 android:background="?attr/colorSurfaceVariant"
                 android:text="/" />
 
+            <!-- Hint -->
+            <TextView
+                android:id="@+id/text_hint_download"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/tip_long_press_download"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                android:paddingTop="6dp"
+                android:paddingBottom="2dp" />
+
             <!-- File list -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_files"

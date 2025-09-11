@@ -128,18 +128,43 @@ class MountBrowserActivity : AppCompatActivity() {
         supportActionBar?.title = containerName ?: containerId?.take(12) ?: "Container"
         supportActionBar?.subtitle = mountPath ?: "/"
 
-        filesAdapter = FileEntryAdapter { entry ->
-            if (entry.isDir) {
-                val next = if (currentPath == "/") "/${entry.name}" else "$currentPath/${entry.name}"
-                loadDirectory(next)
-            } else {
-                promptDownload(entry)
+        filesAdapter = FileEntryAdapter(
+            onClick = { entry ->
+                if (entry.isDir) {
+                    val next = if (currentPath == "/") "/${entry.name}" else "$currentPath/${entry.name}"
+                    loadDirectory(next)
+                } else {
+                    promptDownload(entry)
+                }
+            },
+            onDownload = { entry ->
+                if (entry.name == "..") {
+                    showEntryDetails(entry)
+                } else {
+                    promptDownload(entry)
+                }
+            },
+            onDetails = { entry ->
+                showEntryDetails(entry)
             }
-        }
+        )
         val rv = findViewById<RecyclerView>(R.id.recycler_files)
         rv.layoutManager = LinearLayoutManager(this)
         rv.adapter = filesAdapter
         updateMountInfo("Loading...")
+
+        // Setup hint visibility and dismiss behavior
+        val hint = findViewById<TextView>(R.id.text_hint_download)
+        val prefs = Prefs(this)
+        if (prefs.mountDownloadHintDismissed()) {
+            hint.visibility = android.view.View.GONE
+        } else {
+            hint.visibility = android.view.View.VISIBLE
+            hint.setOnClickListener {
+                Prefs(this).setMountDownloadHintDismissed(true)
+                hint.visibility = android.view.View.GONE
+            }
+        }
     }
 
     private fun updateMountInfo(status: String) {
@@ -323,6 +348,115 @@ class MountBrowserActivity : AppCompatActivity() {
                 dlg.findViewById<TextView>(android.R.id.message)?.text = msg
             }
         }
+    }
+
+    private fun showEntryDetails(entry: FileEntry) {
+        val fullPath = if (currentPath == "/") "/${entry.name}" else "$currentPath/${entry.name}"
+        val title = entry.name.ifBlank { fullPath }
+        val builder = MaterialAlertDialogBuilder(this)
+            .setTitle("Details")
+            .setMessage("Loading...")
+            .setPositiveButton(android.R.string.ok, null)
+        if (entry.isDir) {
+            builder.setNeutralButton(getString(R.string.action_calculate_size), null)
+        }
+        val dlg = builder.create()
+        dlg.show()
+
+        var baseDetails: String = ""
+        lifecycleScope.launch {
+            val size = fetchFileSize(fullPath)
+            val type = if (entry.isDir) "Directory" else (guessMimeTypeFromName(entry.name) ?: "File")
+            val sb = StringBuilder()
+            sb.append("Name: ").append(title)
+            sb.append("\nPath: ").append(fullPath)
+            sb.append("\nType: ").append(type)
+            if (size != null && size >= 0) sb.append("\nSize: ").append(formatBytes(size))
+            baseDetails = sb.toString()
+            dlg.findViewById<TextView>(android.R.id.message)?.text = baseDetails
+        }
+
+        if (entry.isDir) {
+            // Wire up Calculate Size after show so we can override click behavior
+            val btn = dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL)
+            btn?.setOnClickListener {
+                btn.isEnabled = false
+                val msgView = dlg.findViewById<TextView>(android.R.id.message)
+                val base = if (baseDetails.isNotEmpty()) baseDetails else (msgView?.text?.toString() ?: "")
+                msgView?.text = base + "\nCalculating total size…"
+                calculateDirectorySize(fullPath) { bytes, error ->
+                    btn.isEnabled = true
+                    val resolvedBase = if (baseDetails.isNotEmpty()) baseDetails else (msgView?.text?.toString()?.replace("\nCalculating total size…", "") ?: "")
+                    val extra = if (error != null) "\nTotal size: error (${error})" else "\nTotal size: ${formatBytes(bytes ?: 0)}"
+                    msgView?.text = resolvedBase + extra
+                }
+            }
+        }
+    }
+
+    private fun calculateDirectorySize(path: String, callback: (Long?, String?) -> Unit) {
+        val prefs = Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        val cmd = buildDirSizeCommand(path)
+        val execRequest = ContainerExecRequest(
+            Cmd = listOf("/bin/sh", "-c", cmd),
+            AttachStdout = true,
+            AttachStderr = true
+        )
+        lifecycleScope.launch {
+            try {
+                val execResponse = withContext(Dispatchers.IO) {
+                    api.containerExec(endpointId, containerId ?: "", execRequest, agentTarget)
+                }
+                val execId = execResponse.Id
+                if (!execId.isNullOrBlank()) {
+                    var buffer = StringBuilder()
+                    val client = ExecWebSocketClient(
+                        context = this@MountBrowserActivity,
+                        baseUrl = prefs.baseUrl(),
+                        apiToken = prefs.token(),
+                        onMessage = { msg -> buffer.append(msg) },
+                        onError = { err -> runOnUiThread { callback(null, err) } },
+                        onClosed = {
+                            val out = buffer.toString()
+                            val parsed = parseDirSizeOutput(out)
+                            runOnUiThread {
+                                if (parsed != null) callback(parsed, null) else callback(null, "Unable to parse size")
+                            }
+                        }
+                    )
+                    client.connect(endpointId, execId, agentTarget)
+                } else {
+                    callback(null, "Unable to create exec session")
+                }
+            } catch (e: Exception) {
+                callback(null, e.message)
+            }
+        }
+    }
+
+    private fun buildDirSizeCommand(path: String): String {
+        val escaped = path.replace("'", "'\"'\"'")
+        return "cd -- '$escaped' || exit; " +
+                "if out=\"$(du -sb . 2>/dev/null)\"; then echo BYTES:${'$'}{out%%[[:space:]]*}; " +
+                "elif out=\"$(du -sk . 2>/dev/null)\"; then echo KB:${'$'}{out%%[[:space:]]*}; " +
+                "elif out=\"$(du -s . 2>/dev/null)\"; then echo KDU:${'$'}{out%%[[:space:]]*}; " +
+                "elif command -v find >/dev/null 2>&1 && command -v awk >/dev/null 2>&1 && command -v stat >/dev/null 2>&1; then echo BYTES:$(find . -type f -print0 | xargs -0 stat -c %s 2>/dev/null | awk '{s+=$1} END {print s+0}'); " +
+                "else echo BYTES:0; fi; printf '%s' '---VibetainerEOF---'"
+    }
+
+    private fun parseDirSizeOutput(out: String): Long? {
+        val clean = out.replace("\r", "").trim()
+        val line = clean.lines().firstOrNull { it.startsWith("BYTES:") || it.startsWith("KB:") || it.startsWith("KDU:") }
+            ?: return null
+        return try {
+            when {
+                line.startsWith("BYTES:") -> line.removePrefix("BYTES:").trim().toLong()
+                line.startsWith("KB:") -> line.removePrefix("KB:").trim().toLong() * 1024L
+                line.startsWith("KDU:") -> line.removePrefix("KDU:").trim().toLong() * 1024L
+                else -> null
+            }
+        } catch (_: Exception) { null }
     }
 
     private fun startDownloadToUri(target: Uri, fullPath: String) {
