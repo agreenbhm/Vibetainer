@@ -15,6 +15,7 @@ import retrofit2.http.Body
 import okhttp3.ResponseBody
 import retrofit2.http.Streaming
 import retrofit2.http.PUT
+import retrofit2.http.HEAD
 import com.google.gson.annotations.SerializedName
 import java.util.concurrent.TimeUnit
 
@@ -306,6 +307,15 @@ interface PortainerService {
         @Query("path") path: String,
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     ): okhttp3.ResponseBody
+
+    // HEAD request to get X-Docker-Container-Path-Stat header (base64 JSON with size/mode)
+    @HEAD("api/endpoints/{endpointId}/docker/containers/{id}/archive")
+    suspend fun containerStatArchive(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Query("path") path: String,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): retrofit2.Response<Void>
 
     @POST("api/endpoints/{endpointId}/docker/containers/{id}/exec")
     suspend fun containerExec(

@@ -23,6 +23,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.net.Uri
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import android.widget.ProgressBar
+import android.webkit.MimeTypeMap
+import androidx.documentfile.provider.DocumentFile
+import android.util.Base64
+import org.json.JSONObject
+import androidx.appcompat.app.AlertDialog
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 
 class MountBrowserActivity : AppCompatActivity() {
     
@@ -39,17 +46,37 @@ class MountBrowserActivity : AppCompatActivity() {
     private var showHidden: Boolean = false
     private var sortAsc: Boolean = true
     private var pendingDownloadPath: String? = null
+    private var pendingDownloadDirPath: String? = null
+    private var saveAsTarForDir: Boolean = false
+    private var currentDownloadJob: Job? = null
 
     private val createDocumentLauncher = registerForActivityResult(
-        ActivityResultContracts.CreateDocument("application/octet-stream")
+        ActivityResultContracts.CreateDocument("*/*")
     ) { uri: Uri? ->
         val fullPath = pendingDownloadPath
         if (uri != null && !fullPath.isNullOrBlank()) {
-            startDownloadToUri(uri, fullPath)
+            if (saveAsTarForDir) {
+                startTarSaveToUri(uri, fullPath)
+            } else {
+                startDownloadToUri(uri, fullPath)
+            }
         } else if (fullPath != null) {
             Snackbar.make(findViewById(android.R.id.content), "Download canceled", Snackbar.LENGTH_SHORT).show()
         }
         pendingDownloadPath = null
+        saveAsTarForDir = false
+    }
+
+    private val openDocumentTreeLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        val dirPath = pendingDownloadDirPath
+        if (uri != null && !dirPath.isNullOrBlank()) {
+            startDirectoryDownloadToTree(uri, dirPath)
+        } else if (dirPath != null) {
+            Snackbar.make(findViewById(android.R.id.content), "Download canceled", Snackbar.LENGTH_SHORT).show()
+        }
+        pendingDownloadDirPath = null
     }
     
     companion object {
@@ -262,29 +289,54 @@ class MountBrowserActivity : AppCompatActivity() {
 
     private fun promptDownload(entry: FileEntry) {
         val fullPath = if (currentPath == "/") "/${entry.name}" else "$currentPath/${entry.name}"
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Download file?")
-            .setMessage(fullPath)
-            .setPositiveButton("Save As") { _, _ ->
-                pendingDownloadPath = fullPath
-                // Launch SAF create document with suggested name
-                createDocumentLauncher.launch(entry.name)
+        if (entry.isDir) {
+            val dlg = MaterialAlertDialogBuilder(this)
+                .setTitle("Download directory?")
+                .setMessage("$fullPath\nSize: unknown")
+                .setPositiveButton("Choose Folder") { _, _ ->
+                    pendingDownloadDirPath = fullPath
+                    openDocumentTreeLauncher.launch(null)
+                }
+                .setNeutralButton("Save as .tar") { _, _ ->
+                    pendingDownloadPath = fullPath
+                    saveAsTarForDir = true
+                    val tarName = entry.name.removeSuffix("/") + ".tar"
+                    createDocumentLauncher.launch(tarName)
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+            dlg.show()
+        } else {
+            val dlg = MaterialAlertDialogBuilder(this)
+                .setTitle("Download file?")
+                .setMessage("$fullPath\nFetching size...")
+                .setPositiveButton("Save As") { _, _ ->
+                    pendingDownloadPath = fullPath
+                    createDocumentLauncher.launch(entry.name)
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .create()
+            dlg.show()
+            lifecycleScope.launch {
+                val size = fetchFileSize(fullPath)
+                val msg = if (size != null && size >= 0) "$fullPath\nSize: ${formatBytes(size)}" else "$fullPath\nSize: unknown"
+                dlg.findViewById<TextView>(android.R.id.message)?.text = msg
             }
-            .setNegativeButton(android.R.string.cancel, null)
-            .show()
+        }
     }
 
     private fun startDownloadToUri(target: Uri, fullPath: String) {
         val progressDialog = MaterialAlertDialogBuilder(this)
             .setView(ProgressBar(this))
-            .setCancelable(false)
+            .setCancelable(true)
+            .setNegativeButton("Cancel", null)
             .create()
         progressDialog.show()
 
         val prefs = Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
 
-        lifecycleScope.launch {
+        currentDownloadJob = lifecycleScope.launch {
             try {
                 val out = withContext(Dispatchers.IO) { contentResolver.openOutputStream(target) }
                 if (out == null) throw IllegalStateException("Unable to open output stream")
@@ -301,7 +353,7 @@ class MountBrowserActivity : AppCompatActivity() {
 
                 withContext(Dispatchers.IO) {
                     body.use { resp ->
-                        val success = extractFirstFileFromTar(resp.byteStream(), out)
+                        val success = extractFirstFileFromTar(resp.byteStream(), out) { !isActive }
                         out.flush()
                         out.close()
                         if (!success) throw IllegalStateException("Archive did not contain a regular file")
@@ -309,12 +361,14 @@ class MountBrowserActivity : AppCompatActivity() {
                 }
 
                 progressDialog.dismiss()
+                val viewMime = contentResolver.getType(target)
+                    ?: guessMimeTypeFromName(fullPath)
+                    ?: "*/*"
                 Snackbar.make(findViewById(android.R.id.content), "File saved", Snackbar.LENGTH_LONG)
                     .setAction("Open File") {
                         try {
-                            val mime = contentResolver.getType(target) ?: "*/*"
                             val open = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                                setDataAndType(target, mime)
+                                setDataAndType(target, viewMime)
                                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
                             startActivity(open)
@@ -325,18 +379,209 @@ class MountBrowserActivity : AppCompatActivity() {
                     .show()
             } catch (e: Exception) {
                 progressDialog.dismiss()
-                Snackbar.make(
-                    findViewById(android.R.id.content),
-                    "Error: ${e.message}",
-                    Snackbar.LENGTH_LONG
-                ).show()
+                if (e is kotlinx.coroutines.CancellationException) {
+                    Snackbar.make(findViewById(android.R.id.content), "Download canceled", Snackbar.LENGTH_SHORT).show()
+                } else {
+                    Snackbar.make(
+                        findViewById(android.R.id.content),
+                        "Error: ${e.message}",
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+        progressDialog.setOnShowListener {
+            (progressDialog as AlertDialog).getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener {
+                currentDownloadJob?.cancel()
+                progressDialog.dismiss()
             }
         }
     }
 
-    private fun extractFirstFileFromTar(input: java.io.InputStream, output: java.io.OutputStream): Boolean {
+    private fun startDirectoryDownloadToTree(treeUri: Uri, dirPath: String) {
+        val progressDialog = MaterialAlertDialogBuilder(this)
+            .setView(ProgressBar(this))
+            .setCancelable(true)
+            .setNegativeButton("Cancel", null)
+            .create()
+        progressDialog.show()
+
+        val prefs = Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        val rootDoc = DocumentFile.fromTreeUri(this, treeUri)
+            ?: run {
+                progressDialog.dismiss()
+                Snackbar.make(findViewById(android.R.id.content), "Invalid destination folder", Snackbar.LENGTH_LONG).show()
+                return
+            }
+
+        currentDownloadJob = lifecycleScope.launch {
+            try {
+                val body = withContext(Dispatchers.IO) {
+                    api.containerGetArchive(
+                        endpointId = endpointId,
+                        id = containerId ?: "",
+                        path = dirPath,
+                        agentTarget = agentTarget
+                    )
+                }
+                withContext(Dispatchers.IO) {
+                    body.use { resp ->
+                        extractTarToTree(resp.byteStream(), rootDoc) { !isActive }
+                    }
+                }
+                progressDialog.dismiss()
+                Snackbar.make(findViewById(android.R.id.content), "Directory saved", Snackbar.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                progressDialog.dismiss()
+                if (e is kotlinx.coroutines.CancellationException) {
+                    Snackbar.make(findViewById(android.R.id.content), "Download canceled", Snackbar.LENGTH_SHORT).show()
+                } else {
+                    Snackbar.make(findViewById(android.R.id.content), "Error: ${e.message}", Snackbar.LENGTH_LONG).show()
+                }
+            }
+        }
+        progressDialog.setOnShowListener {
+            (progressDialog as AlertDialog).getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener {
+                currentDownloadJob?.cancel()
+                progressDialog.dismiss()
+            }
+        }
+    }
+
+    private fun startTarSaveToUri(target: Uri, fullPath: String) {
+        val progressDialog = MaterialAlertDialogBuilder(this)
+            .setView(ProgressBar(this))
+            .setCancelable(true)
+            .setNegativeButton("Cancel", null)
+            .create()
+        progressDialog.show()
+
+        val prefs = Prefs(this)
+        val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+        currentDownloadJob = lifecycleScope.launch {
+            try {
+                val out = withContext(Dispatchers.IO) { contentResolver.openOutputStream(target) }
+                if (out == null) throw IllegalStateException("Unable to open output stream")
+                val body = withContext(Dispatchers.IO) {
+                    api.containerGetArchive(endpointId, containerId ?: "", fullPath, agentTarget)
+                }
+                withContext(Dispatchers.IO) {
+                    body.use { resp ->
+                        resp.byteStream().use { input ->
+                            val buf = ByteArray(64 * 1024)
+                            while (isActive) {
+                                val r = input.read(buf)
+                                if (r == -1) break
+                                out.write(buf, 0, r)
+                            }
+                            out.flush()
+                            out.close()
+                        }
+                    }
+                }
+                progressDialog.dismiss()
+                Snackbar.make(findViewById(android.R.id.content), "TAR saved", Snackbar.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                progressDialog.dismiss()
+                if (e is kotlinx.coroutines.CancellationException) {
+                    Snackbar.make(findViewById(android.R.id.content), "Download canceled", Snackbar.LENGTH_SHORT).show()
+                } else {
+                    Snackbar.make(findViewById(android.R.id.content), "Error: ${e.message}", Snackbar.LENGTH_LONG).show()
+                }
+            }
+        }
+        progressDialog.setOnShowListener {
+            (progressDialog as AlertDialog).getButton(AlertDialog.BUTTON_NEGATIVE)?.setOnClickListener {
+                currentDownloadJob?.cancel()
+                progressDialog.dismiss()
+            }
+        }
+    }
+
+private fun extractTarToTree(input: java.io.InputStream, root: DocumentFile, shouldCancel: () -> Boolean = { false }) {
+    val header = ByteArray(512)
+    while (true) {
+        if (shouldCancel()) throw kotlinx.coroutines.CancellationException()
+        val read = readFully(input, header)
+        if (read == -1) return
+        if (isZeroBlock(header)) return
+
+            val name = readTarName(header)
+            val typeFlag = header[156].toInt()
+            val size = parseTarSize(header, 124, 12)
+
+            when (typeFlag) {
+                '5'.code -> { // directory
+                    ensureTreeDir(root, name)
+                    // no content
+                }
+                0, '0'.code -> { // regular file
+                    val parent = name.substringBeforeLast('/', "")
+                    val base = name.substringAfterLast('/')
+                    val dirDoc = ensureTreeDir(root, parent)
+                    val mime = guessMimeTypeFromName(base) ?: "application/octet-stream"
+                    val existing = dirDoc.findFile(base)
+                    if (existing != null) existing.delete()
+                    val fileDoc = dirDoc.createFile(mime, base)
+                        ?: throw IllegalStateException("Unable to create file: $base")
+            contentResolver.openOutputStream(fileDoc.uri)?.use { out ->
+                copyExactlyCancellable(input, out, size, shouldCancel)
+            } ?: throw IllegalStateException("Unable to open output stream for: $base")
+            skipPadding(input, size)
+        }
+        else -> {
+            // skip unknown type
+            skipExactlyCancellable(input, size, shouldCancel)
+            skipPadding(input, size)
+        }
+    }
+}
+    }
+
+    private fun readTarName(header: ByteArray): String {
+        val nameBytes = header.copyOfRange(0, 100)
+        val prefixBytes = header.copyOfRange(345, 500)
+        val name = bytesToString(nameBytes)
+        val prefix = bytesToString(prefixBytes)
+        return if (prefix.isNotEmpty()) "$prefix/$name" else name
+    }
+
+    private fun bytesToString(b: ByteArray): String {
+        var end = b.size
+        for (i in b.indices) {
+            if (b[i].toInt() == 0) { end = i; break }
+        }
+        return if (end <= 0) "" else String(b, 0, end, Charsets.UTF_8)
+    }
+
+    private fun ensureTreeDir(root: DocumentFile, relative: String): DocumentFile {
+        var cur = root
+        if (relative.isBlank()) return cur
+        val parts = relative.trim('/').split('/')
+        for (p in parts) {
+            if (p.isBlank()) continue
+            val existing = cur.findFile(p)
+            cur = if (existing != null && existing.isDirectory) {
+                existing
+            } else {
+                existing?.delete()
+                cur.createDirectory(p) ?: throw IllegalStateException("Cannot create directory: $p")
+            }
+        }
+        return cur
+    }
+
+    private fun guessMimeTypeFromName(name: String): String? {
+        val ext = name.substringAfterLast('.', "").lowercase()
+        if (ext.isBlank()) return null
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+    }
+
+    private fun extractFirstFileFromTar(input: java.io.InputStream, output: java.io.OutputStream, shouldCancel: () -> Boolean = { false }): Boolean {
         val header = ByteArray(512)
         while (true) {
+            if (shouldCancel()) throw kotlinx.coroutines.CancellationException()
             val read = readFully(input, header)
             if (read == -1) return false
             if (isZeroBlock(header)) return false // End of archive
@@ -346,13 +591,13 @@ class MountBrowserActivity : AppCompatActivity() {
 
             val isRegular = (typeFlag == '0'.code) || (typeFlag == 0)
             if (isRegular) {
-                copyExactly(input, output, size)
+                copyExactlyCancellable(input, output, size, shouldCancel)
                 // Skip padding up to 512 boundary
                 skipPadding(input, size)
                 return true
             } else {
                 // Skip entry content + padding
-                skipExactly(input, size)
+                skipExactlyCancellable(input, size, shouldCancel)
                 skipPadding(input, size)
             }
         }
@@ -400,10 +645,35 @@ class MountBrowserActivity : AppCompatActivity() {
         }
     }
 
+    private fun copyExactlyCancellable(input: java.io.InputStream, output: java.io.OutputStream, size: Long, shouldCancel: () -> Boolean) {
+        var remaining = size
+        val buf = ByteArray(64 * 1024)
+        while (remaining > 0) {
+            if (shouldCancel()) throw kotlinx.coroutines.CancellationException()
+            val toRead = if (remaining > buf.size) buf.size else remaining.toInt()
+            val r = input.read(buf, 0, toRead)
+            if (r == -1) throw java.io.EOFException("Unexpected EOF in tar entry")
+            output.write(buf, 0, r)
+            remaining -= r
+        }
+    }
+
     private fun skipExactly(input: java.io.InputStream, size: Long) {
         var remaining = size
         val buf = ByteArray(32 * 1024)
         while (remaining > 0) {
+            val toRead = if (remaining > buf.size) buf.size else remaining.toInt()
+            val r = input.read(buf, 0, toRead)
+            if (r == -1) throw java.io.EOFException("Unexpected EOF skipping tar entry")
+            remaining -= r
+        }
+    }
+
+    private fun skipExactlyCancellable(input: java.io.InputStream, size: Long, shouldCancel: () -> Boolean) {
+        var remaining = size
+        val buf = ByteArray(32 * 1024)
+        while (remaining > 0) {
+            if (shouldCancel()) throw kotlinx.coroutines.CancellationException()
             val toRead = if (remaining > buf.size) buf.size else remaining.toInt()
             val r = input.read(buf, 0, toRead)
             if (r == -1) throw java.io.EOFException("Unexpected EOF skipping tar entry")
@@ -416,6 +686,27 @@ class MountBrowserActivity : AppCompatActivity() {
         if (pad > 0) {
             skipExactly(input, pad.toLong())
         }
+    }
+
+    private suspend fun fetchFileSize(path: String): Long? {
+        return try {
+            val prefs = Prefs(this)
+            val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
+            val resp = api.containerStatArchive(endpointId, containerId ?: "", path, agentTarget)
+            val statB64 = resp.headers()["X-Docker-Container-Path-Stat"] ?: return null
+            val decoded = String(Base64.decode(statB64, Base64.DEFAULT), Charsets.UTF_8)
+            val json = JSONObject(decoded)
+            if (json.has("size")) json.getLong("size") else null
+        } catch (_: Exception) { null }
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        if (bytes < 1024) return "$bytes B"
+        val units = arrayOf("KB","MB","GB","TB")
+        var v = bytes.toDouble() / 1024.0
+        var i = 0
+        while (v >= 1024.0 && i < units.size - 1) { v /= 1024.0; i++ }
+        return String.format(java.util.Locale.US, "%.1f %s", v, units[i])
     }
 
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
