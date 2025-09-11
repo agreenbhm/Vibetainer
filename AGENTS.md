@@ -1,5 +1,7 @@
 # Repository Guidelines
 
+When any changes are made by the AI agent, run `./gradlew assembleDebug` to ensure the project builds successfully.  On build success, install the app using `./gradlew installDebug`.  On install success, launch the app with `adb shell monkey -p com.agreenbhm.vibetainer 1`.
+
 ## Project Structure & Module Organization
 - `app/`: Android app module.
   - `src/main/java/com/agreenbhm/vibetainer/`: Kotlin sources (activities, network).
