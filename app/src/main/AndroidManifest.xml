@@ -91,5 +91,8 @@
         <activity
             android:name=".ui.MountBrowserActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.TerminalActivity"
+            android:exported="false" />
     </application>
 </manifest>

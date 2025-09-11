@@ -564,7 +564,8 @@ data class ContainerExecRequest(
     @SerializedName("AttachStderr") val AttachStderr: Boolean = true,
     @SerializedName("AttachStdin") val AttachStdin: Boolean = false,
     @SerializedName("Tty") val Tty: Boolean = false,
-    @SerializedName("WorkingDir") val WorkingDir: String? = null
+    @SerializedName("WorkingDir") val WorkingDir: String? = null,
+    @SerializedName("User") val User: String? = null
 )
 
 data class ContainerExecResponse(

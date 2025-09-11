@@ -335,6 +335,14 @@ class ContainerDetailActivity : AppCompatActivity() {
                 }
                 return true
             }
+            R.id.action_terminal -> {
+                val i = Intent(this, TerminalActivity::class.java)
+                i.putExtra(TerminalActivity.EXTRA_ENDPOINT_ID, endpointId)
+                i.putExtra(TerminalActivity.EXTRA_CONTAINER_ID, containerId)
+                i.putExtra(TerminalActivity.EXTRA_AGENT_TARGET, agentTarget)
+                startActivity(i)
+                return true
+            }
         }
         return super.onOptionsItemSelected(item)
     }

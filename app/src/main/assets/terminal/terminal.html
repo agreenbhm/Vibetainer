@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Terminal</title>
+  <link rel="stylesheet" href="vendor/xterm.min.css" />
+  <style>
+    html, body { height: 100%; margin: 0; background: #111; }
+    #terminal { position: absolute; top: 0; bottom: 0; left: 0; right: 0; }
+  </style>
+</head>
+<body>
+  <div id="terminal"></div>
+  <script src="vendor/xterm.min.js"></script>
+  <script>
+    const term = new window.Terminal({
+      cursorBlink: true,
+      convertEol: true,
+      fontFamily: 'monospace',
+      theme: { background: '#111111', foreground: '#EEEEEE' },
+      scrollback: 2000
+    });
+    term.open(document.getElementById('terminal'));
+    if (window.Android && Android.onReady) {
+      try { Android.onReady(); } catch (e) {}
+    }
+    window.writeBase64 = function(b64) {
+      try {
+        const s = atob(b64);
+        term.write(s);
+      } catch (e) { /* ignore */ }
+    }
+    window.clearTerminal = function() { term.clear(); };
+
+    // Modifiers from native UI (one-shot)
+    let ctrlActive = false;
+    let altActive = false;
+    window.setCtrlAlt = function(ctrl, alt) {
+      ctrlActive = !!ctrl; altActive = !!alt;
+    }
+
+    term.onData(function(data) {
+      if (window.Android && Android.send) {
+        // If modifiers are active, transform data and send
+        if (ctrlActive || altActive) {
+          let out = '';
+          for (let i = 0; i < data.length; i++) {
+            let ch = data[i];
+            if (ctrlActive) {
+              const code = ch.toLowerCase().charCodeAt(0);
+              if (code >= 97 && code <= 122) { // a-z
+                ch = String.fromCharCode(code - 96);
+              } else if (ch === ' ') { ch = String.fromCharCode(0); }
+            }
+            out += ch;
+          }
+          if (altActive) out = '\u001B' + out;
+          Android.send(out);
+          ctrlActive = false; altActive = false;
+        } else {
+          Android.send(data);
+        }
+      }
+    });
+  </script>
+</body>
+</html>

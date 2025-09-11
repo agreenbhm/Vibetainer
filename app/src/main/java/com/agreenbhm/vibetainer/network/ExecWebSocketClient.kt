@@ -11,7 +11,10 @@ class ExecWebSocketClient(
     private val apiToken: String,
     private val onMessage: (String) -> Unit,
     private val onError: (String) -> Unit,
-    private val onClosed: () -> Unit
+    private val onClosed: () -> Unit,
+    private val accumulateAndDetectEof: Boolean = true,
+    private val ttyMode: Boolean = false,
+    private val onBinary: ((ByteArray) -> Unit)? = null
 ) {
     private var webSocket: WebSocket? = null
     private val client: OkHttpClient by lazy {
@@ -99,13 +102,20 @@ class ExecWebSocketClient(
                 }
 
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    processMessage(text)
+                    if (ttyMode && onBinary != null) {
+                        onBinary.invoke(text.toByteArray(Charsets.UTF_8))
+                    } else {
+                        processMessage(text)
+                    }
                 }
 
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                    // Convert binary message to string
-                    val text = demuxDockerOutput(bytes.toByteArray())
-                    processMessage(text)
+                    if (ttyMode && onBinary != null) {
+                        onBinary.invoke(bytes.toByteArray())
+                    } else {
+                        val text = demuxDockerOutput(bytes.toByteArray())
+                        processMessage(text)
+                    }
                 }
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -134,25 +144,19 @@ class ExecWebSocketClient(
     }
 
     private fun processMessage(message: String) {
+        if (!accumulateAndDetectEof) {
+            onMessage(message)
+            return
+        }
         outputBuffer.append(message)
         val currentOutput = outputBuffer.toString()
-        
-        // Check if we've received the EOF marker
         if (currentOutput.contains(eofMarker)) {
-            // Remove the EOF marker from the output
             val cleanOutput = currentOutput.replace(eofMarker, "")
-            
-            // Send the final clean output
             onMessage(cleanOutput)
-            
-            // Close the WebSocket connection cleanly to avoid error 1006
             webSocket?.close(1000, "Command completed successfully")
             webSocket = null
-            
-            // Call onClosed callback
             onClosed()
         } else {
-            // Send the current output (might be partial)
             onMessage(currentOutput)
         }
     }
@@ -191,5 +195,9 @@ class ExecWebSocketClient(
         
         // Fallback: treat as plain UTF-8
         return String(bytes, Charsets.UTF_8)
+    }
+
+    fun send(text: String) {
+        webSocket?.send(text)
     }
 }

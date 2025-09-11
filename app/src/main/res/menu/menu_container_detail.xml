@@ -9,5 +9,8 @@
         android:id="@+id/action_stop"
         android:title="Stop"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_terminal"
+        android:title="@string/action_terminal"
+        app:showAsAction="never" />
 </menu>
-

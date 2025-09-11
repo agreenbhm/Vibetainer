@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_terminal"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbar_terminal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:title="Terminal" />
+
+    <WebView
+        android:id="@+id/web_terminal"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="8dp">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_terminal_clear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Clear" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="8dp"
+        android:gravity="center_vertical">
+
+        <ToggleButton
+            android:id="@+id/btn_key_ctrl"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOn="Ctrl"
+            android:textOff="Ctrl" />
+        <ToggleButton
+            android:id="@+id/btn_key_alt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textOn="Alt"
+            android:textOff="Alt"
+            android:layout_marginStart="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_key_tab"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tab"
+            android:layout_marginStart="12dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_key_esc"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Esc"
+            android:layout_marginStart="8dp" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginStart="16dp">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_key_up"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▲" />
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_key_left"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="◀" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_key_down"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="▼"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_key_right"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="▶" />
+            </LinearLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

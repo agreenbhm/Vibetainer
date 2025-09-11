@@ -1,6 +1,9 @@
 
 import java.io.FileInputStream
 import java.util.Properties
+import java.net.URL
+import java.io.InputStream
+import java.io.OutputStream
 
 plugins {
     id("com.android.application") version "8.13.0" // Or your desired AGP version
@@ -107,4 +110,29 @@ dependencies {
 
     // Core library desugaring for Java 8+ APIs on older Android devices
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+}
+
+// Ensure local xterm assets are present before packaging assets
+tasks.register("fetchXtermAssets") {
+    doLast {
+        val baseDir = File(projectDir, "src/main/assets/terminal/vendor")
+        baseDir.mkdirs()
+        val files = listOf(
+            "https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js" to File(baseDir, "xterm.min.js"),
+            "https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" to File(baseDir, "xterm.min.css")
+        )
+        files.forEach { (url, dest) ->
+            if (!dest.exists() || dest.length() == 0L) {
+                println("Downloading $url -> ${'$'}{dest.absolutePath}")
+                URL(url).openStream().use { input: InputStream ->
+                    dest.outputStream().use { output: OutputStream -> input.copyTo(output) }
+                }
+            }
+        }
+    }
+}
+
+// Hook into asset merging so assets are available for all variants
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    dependsOn("fetchXtermAssets")
 }

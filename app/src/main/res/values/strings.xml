@@ -14,4 +14,8 @@
     <string name="action_details">Details</string>
     <string name="action_calculate_size">Calculate size</string>
     <string name="calculating_total_size">Calculating total size…</string>
+    <string name="action_terminal">Open Terminal</string>
+    <string name="title_start_terminal">Start Terminal Session</string>
+    <string name="action_start">Start</string>
+    <string name="terminal_closed">Terminal session closed</string>
 </resources>
