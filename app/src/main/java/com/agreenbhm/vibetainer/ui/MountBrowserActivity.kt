@@ -19,6 +19,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.agreenbhm.vibetainer.ui.adapters.FileEntry
 import com.agreenbhm.vibetainer.ui.adapters.FileEntryAdapter
+import androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import android.widget.ProgressBar
 
 class MountBrowserActivity : AppCompatActivity() {
     
@@ -34,6 +38,19 @@ class MountBrowserActivity : AppCompatActivity() {
     private var lastWsOutput: String = ""
     private var showHidden: Boolean = false
     private var sortAsc: Boolean = true
+    private var pendingDownloadPath: String? = null
+
+    private val createDocumentLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri: Uri? ->
+        val fullPath = pendingDownloadPath
+        if (uri != null && !fullPath.isNullOrBlank()) {
+            startDownloadToUri(uri, fullPath)
+        } else if (fullPath != null) {
+            Snackbar.make(findViewById(android.R.id.content), "Download canceled", Snackbar.LENGTH_SHORT).show()
+        }
+        pendingDownloadPath = null
+    }
     
     companion object {
         const val EXTRA_ENDPOINT_ID = "endpoint_id"
@@ -89,7 +106,7 @@ class MountBrowserActivity : AppCompatActivity() {
                 val next = if (currentPath == "/") "/${entry.name}" else "$currentPath/${entry.name}"
                 loadDirectory(next)
             } else {
-                openFilePreview(entry)
+                promptDownload(entry)
             }
         }
         val rv = findViewById<RecyclerView>(R.id.recycler_files)
@@ -243,69 +260,162 @@ class MountBrowserActivity : AppCompatActivity() {
         currentPath = findViewById<TextView>(R.id.text_current_path).text.toString()
     }
 
-    private fun openFilePreview(entry: FileEntry) {
+    private fun promptDownload(entry: FileEntry) {
         val fullPath = if (currentPath == "/") "/${entry.name}" else "$currentPath/${entry.name}"
-        val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.bottomsheet_file_preview, null)
-        sheet.setContentView(view)
-        val title = view.findViewById<TextView>(R.id.text_preview_title)
-        val pathView = view.findViewById<TextView>(R.id.text_preview_path)
-        val content = view.findViewById<TextView>(R.id.text_preview_content)
-        val progress = view.findViewById<android.widget.ProgressBar>(R.id.progress_preview)
-        title.text = entry.name
-        pathView.text = fullPath
-        content.text = "Loading..."
-        progress.visibility = android.view.View.VISIBLE
-        sheet.show()
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Download file?")
+            .setMessage(fullPath)
+            .setPositiveButton("Save As") { _, _ ->
+                pendingDownloadPath = fullPath
+                // Launch SAF create document with suggested name
+                createDocumentLauncher.launch(entry.name)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun startDownloadToUri(target: Uri, fullPath: String) {
+        val progressDialog = MaterialAlertDialogBuilder(this)
+            .setView(ProgressBar(this))
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
 
         val prefs = Prefs(this)
         val api = PortainerApi.create(this, prefs.baseUrl(), prefs.token())
-        val cmd = buildPreviewCommand(currentPath, entry.name)
-        val execRequest = ContainerExecRequest(
-            Cmd = listOf("/bin/sh", "-c", cmd),
-            AttachStdout = true,
-            AttachStderr = true
-        )
+
         lifecycleScope.launch {
             try {
-                val execResponse = withContext(Dispatchers.IO) {
-                    api.containerExec(endpointId, containerId ?: "", execRequest, agentTarget)
-                }
-                val execId = execResponse.Id
-                if (!execId.isNullOrBlank()) {
-                    val client = ExecWebSocketClient(
-                        context = this@MountBrowserActivity,
-                        baseUrl = prefs.baseUrl(),
-                        apiToken = prefs.token(),
-                        onMessage = { msg ->
-                            runOnUiThread { content.text = msg }
-                        },
-                        onError = { err ->
-                            runOnUiThread {
-                                progress.visibility = android.view.View.GONE
-                                content.text = "Error: $err"
-                            }
-                        },
-                        onClosed = {
-                            runOnUiThread { progress.visibility = android.view.View.GONE }
-                        }
+                val out = withContext(Dispatchers.IO) { contentResolver.openOutputStream(target) }
+                if (out == null) throw IllegalStateException("Unable to open output stream")
+
+                val body = withContext(Dispatchers.IO) {
+                    // Docker API returns a TAR stream of the path
+                    api.containerGetArchive(
+                        endpointId = endpointId,
+                        id = containerId ?: "",
+                        path = fullPath,
+                        agentTarget = agentTarget
                     )
-                    client.connect(endpointId, execId, agentTarget)
-                } else {
-                    progress.visibility = android.view.View.GONE
-                    content.text = "Unable to create exec session"
                 }
+
+                withContext(Dispatchers.IO) {
+                    body.use { resp ->
+                        val success = extractFirstFileFromTar(resp.byteStream(), out)
+                        out.flush()
+                        out.close()
+                        if (!success) throw IllegalStateException("Archive did not contain a regular file")
+                    }
+                }
+
+                progressDialog.dismiss()
+                Snackbar.make(findViewById(android.R.id.content), "File saved", Snackbar.LENGTH_LONG)
+                    .setAction("Open File") {
+                        try {
+                            val mime = contentResolver.getType(target) ?: "*/*"
+                            val open = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                setDataAndType(target, mime)
+                                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            startActivity(open)
+                        } catch (_: Exception) {
+                            Snackbar.make(findViewById(android.R.id.content), "No app to open file", Snackbar.LENGTH_SHORT).show()
+                        }
+                    }
+                    .show()
             } catch (e: Exception) {
-                progress.visibility = android.view.View.GONE
-                content.text = "Error: ${e.message}"
+                progressDialog.dismiss()
+                Snackbar.make(
+                    findViewById(android.R.id.content),
+                    "Error: ${e.message}",
+                    Snackbar.LENGTH_LONG
+                ).show()
             }
         }
     }
 
-    private fun buildPreviewCommand(dir: String, name: String): String {
-        val escapedDir = dir.replace("'", "'\"'\"'")
-        val escapedName = name.replace("'", "'\"'\"'")
-        return "cd -- '$escapedDir' || exit; if [ -f '$escapedName' ]; then if command -v head >/dev/null 2>&1; then head -c 65536 -- '$escapedName'; else sed -n '1,400p' -- '$escapedName'; fi; else printf '%s' 'Not a regular file'; fi; printf '%s' '---VibetainerEOF---'"
+    private fun extractFirstFileFromTar(input: java.io.InputStream, output: java.io.OutputStream): Boolean {
+        val header = ByteArray(512)
+        while (true) {
+            val read = readFully(input, header)
+            if (read == -1) return false
+            if (isZeroBlock(header)) return false // End of archive
+
+            val typeFlag = header[156].toInt()
+            val size = parseTarSize(header, 124, 12)
+
+            val isRegular = (typeFlag == '0'.code) || (typeFlag == 0)
+            if (isRegular) {
+                copyExactly(input, output, size)
+                // Skip padding up to 512 boundary
+                skipPadding(input, size)
+                return true
+            } else {
+                // Skip entry content + padding
+                skipExactly(input, size)
+                skipPadding(input, size)
+            }
+        }
+    }
+
+    private fun readFully(input: java.io.InputStream, buf: ByteArray): Int {
+        var off = 0
+        while (off < buf.size) {
+            val r = input.read(buf, off, buf.size - off)
+            if (r == -1) return if (off == 0) -1 else off
+            off += r
+        }
+        return off
+    }
+
+    private fun isZeroBlock(block: ByteArray): Boolean {
+        for (b in block) if (b.toInt() != 0) return false
+        return true
+        }
+
+    private fun parseTarSize(header: ByteArray, offset: Int, length: Int): Long {
+        var i = offset
+        var end = offset + length
+        // Trim nulls and spaces
+        while (i < end && (header[i].toInt() == 0 || header[i].toInt() == 32)) i++
+        while (end > i && (header[end - 1].toInt() == 0 || header[end - 1].toInt() == 32)) end--
+        var result = 0L
+        for (j in i until end) {
+            val c = header[j].toInt()
+            if (c < '0'.code || c > '7'.code) break
+            result = (result shl 3) + (c - '0'.code)
+        }
+        return result
+    }
+
+    private fun copyExactly(input: java.io.InputStream, output: java.io.OutputStream, size: Long) {
+        var remaining = size
+        val buf = ByteArray(64 * 1024)
+        while (remaining > 0) {
+            val toRead = if (remaining > buf.size) buf.size else remaining.toInt()
+            val r = input.read(buf, 0, toRead)
+            if (r == -1) throw java.io.EOFException("Unexpected EOF in tar entry")
+            output.write(buf, 0, r)
+            remaining -= r
+        }
+    }
+
+    private fun skipExactly(input: java.io.InputStream, size: Long) {
+        var remaining = size
+        val buf = ByteArray(32 * 1024)
+        while (remaining > 0) {
+            val toRead = if (remaining > buf.size) buf.size else remaining.toInt()
+            val r = input.read(buf, 0, toRead)
+            if (r == -1) throw java.io.EOFException("Unexpected EOF skipping tar entry")
+            remaining -= r
+        }
+    }
+
+    private fun skipPadding(input: java.io.InputStream, size: Long) {
+        val pad = ((512 - (size % 512)) % 512).toInt()
+        if (pad > 0) {
+            skipExactly(input, pad.toLong())
+        }
     }
 
     override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {

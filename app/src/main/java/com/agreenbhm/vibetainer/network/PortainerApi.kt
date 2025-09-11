@@ -297,6 +297,16 @@ interface PortainerService {
         @Header("X-PortainerAgent-Target") agentTarget: String? = null
     )
 
+    // Stream tar archive of a file/directory inside the container
+    @Streaming
+    @GET("api/endpoints/{endpointId}/docker/containers/{id}/archive")
+    suspend fun containerGetArchive(
+        @Path("endpointId") endpointId: Int,
+        @Path("id") id: String,
+        @Query("path") path: String,
+        @Header("X-PortainerAgent-Target") agentTarget: String? = null
+    ): okhttp3.ResponseBody
+
     @POST("api/endpoints/{endpointId}/docker/containers/{id}/exec")
     suspend fun containerExec(
         @Path("endpointId") endpointId: Int,
