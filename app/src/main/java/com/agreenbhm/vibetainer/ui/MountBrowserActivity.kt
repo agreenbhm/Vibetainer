@@ -353,9 +353,14 @@ class MountBrowserActivity : AppCompatActivity() {
     private fun showEntryDetails(entry: FileEntry) {
         val fullPath = if (currentPath == "/") "/${entry.name}" else "$currentPath/${entry.name}"
         val title = entry.name.ifBlank { fullPath }
+        val view = layoutInflater.inflate(R.layout.dialog_details, null)
+        val detailsMsg = view.findViewById<TextView>(R.id.details_message)
+        val calcContainer = view.findViewById<android.view.View>(R.id.calc_container)
+        detailsMsg.text = "Loading..."
+
         val builder = MaterialAlertDialogBuilder(this)
             .setTitle("Details")
-            .setMessage("Loading...")
+            .setView(view)
             .setPositiveButton(android.R.string.ok, null)
         if (entry.isDir) {
             builder.setNeutralButton(getString(R.string.action_calculate_size), null)
@@ -373,7 +378,7 @@ class MountBrowserActivity : AppCompatActivity() {
             sb.append("\nType: ").append(type)
             if (size != null && size >= 0) sb.append("\nSize: ").append(formatBytes(size))
             baseDetails = sb.toString()
-            dlg.findViewById<TextView>(android.R.id.message)?.text = baseDetails
+            detailsMsg.text = baseDetails
         }
 
         if (entry.isDir) {
@@ -381,14 +386,15 @@ class MountBrowserActivity : AppCompatActivity() {
             val btn = dlg.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL)
             btn?.setOnClickListener {
                 btn.isEnabled = false
-                val msgView = dlg.findViewById<TextView>(android.R.id.message)
-                val base = if (baseDetails.isNotEmpty()) baseDetails else (msgView?.text?.toString() ?: "")
-                msgView?.text = base + "\nCalculating total size…"
+                val base = if (baseDetails.isNotEmpty()) baseDetails else (detailsMsg.text?.toString() ?: "")
+                detailsMsg.text = base
+                calcContainer.visibility = android.view.View.VISIBLE
                 calculateDirectorySize(fullPath) { bytes, error ->
                     btn.isEnabled = true
-                    val resolvedBase = if (baseDetails.isNotEmpty()) baseDetails else (msgView?.text?.toString()?.replace("\nCalculating total size…", "") ?: "")
+                    calcContainer.visibility = android.view.View.GONE
+                    val resolvedBase = if (baseDetails.isNotEmpty()) baseDetails else (detailsMsg.text?.toString() ?: "")
                     val extra = if (error != null) "\nTotal size: error (${error})" else "\nTotal size: ${formatBytes(bytes ?: 0)}"
-                    msgView?.text = resolvedBase + extra
+                    detailsMsg.text = resolvedBase + extra
                 }
             }
         }
